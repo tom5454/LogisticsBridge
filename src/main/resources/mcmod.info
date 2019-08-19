@@ -1,0 +1,11 @@
+[
+{
+  "modid" : "logisticsbridge",
+  "name" : "Logistics Bridge",
+  "description": "",
+  "version": "${version}",
+  "url" : "",
+  "authorList": ["tom5454"],
+  "logoFile" : "logo.png"
+}
+]

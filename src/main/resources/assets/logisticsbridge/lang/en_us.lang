@@ -1,0 +1,43 @@
+item.logisticspipes.pipe_lb.bridgepipe.name=Bridge Pipe
+item.logisticspipes.pipe_lb.bridgepipe.tip1=Type: Bridge
+item.logisticspipes.pipe_lb.bridgepipe.tip2= - Attaches to an %cYELLOW AE Bridge %cRESET %cGRAY.
+item.logisticspipes.pipe_lb.bridgepipe.tip3= - Creates a bridge between AE and LP.
+
+item.logisticspipes.pipe_lb.craftingmanager.name=Crafting Manager
+item.logisticspipes.pipe_lb.craftingmanager.tip1=Type: AutoCrafting
+item.logisticspipes.pipe_lb.craftingmanager.tip2= - Doesn't need an inventory
+item.logisticspipes.pipe_lb.craftingmanager.tip3= - Can contain 27 Crafting modules with 2 Upgrade slots.
+item.logisticspipes.pipe_lb.craftingmanager.tip4= - Used with a %cYELLOW Result Pipe %cRESET %cGRAY & %cYELLOW Satellite Pipe %cRESET %cGRAY.
+
+item.logisticspipes.pipe_lb.resultpipe.name=Result Logistics Pipe
+item.logisticspipes.pipe_lb.resultpipe.tip1=Type: Item Source
+item.logisticspipes.pipe_lb.resultpipe.tip2= - Attaches to an inventory
+item.logisticspipes.pipe_lb.resultpipe.tip3= - Sends 16 items into the network to fulfill crafting requests.
+item.logisticspipes.pipe_lb.resultpipe.tip4= - Used with a %cYELLOW Crafting Manager %cRESET %cGRAY.
+
+item.lb.logisticsFakeItem.name=Logistics Craft Token
+item.lb.package.name=Empty Package
+item.lb.virtPattern.name=Virtual Encoded Pattern
+item.appliedenergistics2.multi_part.satellite_bus.name=Satellite Bus
+
+tile.lb.bridge.name=AE Bridge
+tile.lb.crafting_managerAE.name=Crafting Manager
+
+tooltip.logisticsbridge.fakeItemNull=Auto Craft token
+tooltip.logisticsbridge.request=Requests %s from Logistics Pipes Network
+tooltip.logisticsbridge.techItem=This item used for requesting & crafting logic. You have no use for it! Throw it away!
+tooltip.logisticsbridge.packageAct=Package Contains %s
+tooltip.logisticsbridge.packageTmp=Package Template for %s
+tooltip.logisticsbridge.packageEmt=Package Empty
+tooltip.logisticsbridge.satID=Satellite ID: %s
+tooltip.logisticsbridge.packageName=%s to %s
+
+gui.resultPipe.id=Result Pipe ID
+gui.craftingManager=Crafting Manager
+gui.craftingManager.openCfg=Open Config
+gui.craftingManager.pickupUpgrade=Pickup Upgrade from Slot #%d
+gui.craftingManager.satellite=Default Satellite ID
+gui.craftingManager.result=Result Pipe ID
+gui.craftingManager.noConnection=N/C
+gui.satelliteBus.id=Satellite ID
+gui.package=Package Config
