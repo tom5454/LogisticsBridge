@@ -96,40 +96,6 @@ public class ModuleCrafterExt extends ModuleCrafter {
 				}
 			}
 		}
-		/*if (!getUpgradeManager().isAdvancedSatelliteCrafter()) {
-			if (mngr.satelliteId != 0) {
-				IRouter r = getSatelliteRouterByID(mngr.satelliteId);
-				if (r != null) {
-					IRequestItems sat = r.getPipe();
-					for (int i = 0; i < 9; i++) {
-						target[i] = sat;
-					}
-				}
-			}else return null;
-			if (satelliteId != 0) {
-				IRouter r = getSatelliteRouter(-1);
-				if (r != null) {
-					IRequestItems sat = r.getPipe();
-					for (int i = 6; i < 9; i++) {
-						target[i] = sat;
-					}
-				}
-			}
-		} else {
-			for (int i = 0; i < 9; i++) {
-				if (advancedSatelliteIdArray[i] != 0) {
-					IRouter r = getSatelliteRouter(i);
-					if (r != null) {
-						target[i] = r.getPipe();
-					}
-				}else if (mngr.satelliteId != 0) {
-					IRouter r = getSatelliteRouterByID(mngr.satelliteId);
-					if (r != null) {
-						target[i] = r.getPipe();
-					}
-				}else return null;
-			}
-		}*/
 
 		//Check all materials
 		for (int i = 0; i < 9; i++) {
@@ -282,5 +248,27 @@ public class ModuleCrafterExt extends ModuleCrafter {
 		if(!(coreRoutedPipe instanceof ResultPipe))return;
 		ResultPipe res = (ResultPipe) coreRoutedPipe;
 		res.registerExtras(promise);
+	}
+	@Override
+	public void enabledUpdateEntity() {
+		super.enabledUpdateEntity();
+		if (!_service.isNthTick(6)) {
+			return;
+		}
+
+		if(!(_service instanceof CraftingManager))return;
+		CraftingManager mngr = (CraftingManager) _service;
+
+		if ((!_service.getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA))) {
+			if (getUpgradeManager().getCrafterCleanup() > 0) {
+				IRouter resultR = getResultRouterByID(mngr.getResultUUID());
+				if(resultR == null)return;
+				CoreRoutedPipe coreRoutedPipe = resultR.getPipe();
+				if(!(coreRoutedPipe instanceof ResultPipe))return;
+				ResultPipe res = (ResultPipe) coreRoutedPipe;
+				res.extractCleanup(_cleanupInventory, cleanupModeIsExclude, getUpgradeManager().getCrafterCleanup() * 3);
+			}
+			return;
+		}
 	}
 }

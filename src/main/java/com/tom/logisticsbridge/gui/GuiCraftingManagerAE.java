@@ -58,7 +58,7 @@ public class GuiCraftingManagerAE extends LogisticsBaseGuiScreen {
 		super.initGui();//120 155
 		extentionControllerLeft.clear();
 		ConfigExtention ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.satellite"), LogisticsBridge.SATELLITE_BUS_SRC.stack(1), 0);
-		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 40, guiTop + 25, 40, 10, StringUtils.translate("gui.crafting.Select")))));
+		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 45, guiTop + 25, 40, 10, StringUtils.translate("gui.crafting.Select")))));
 		extentionControllerLeft.addExtention(ce);
 	}
 	@Override
@@ -108,9 +108,9 @@ public class GuiCraftingManagerAE extends LogisticsBaseGuiScreen {
 			} else {
 				fontRenderer.drawString(name, left + 9, top + 8, 0x404040);
 				if (pid == null || pid.isEmpty()) {
-					mc.fontRenderer.drawString(StringUtils.translate("gui.craftingManager.noConnection"), left + 55, top + 22, 0x404040);
+					mc.fontRenderer.drawString(StringUtils.translate("gui.craftingManager.noConnection"), left + 40, top + 22, 0x404040);
 				} else {
-					mc.fontRenderer.drawString("" + pid, left + 65 - mc.fontRenderer.getStringWidth("" + pid)/2, top + 22, 0x404040);
+					mc.fontRenderer.drawString("" + pid, left + 40 - mc.fontRenderer.getStringWidth("" + pid)/2, top + 22, 0x404040);
 				}
 			}
 		}

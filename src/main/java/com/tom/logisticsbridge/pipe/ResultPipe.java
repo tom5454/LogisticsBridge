@@ -60,6 +60,7 @@ import logisticspipes.utils.CacheHolder.CacheTypes;
 import logisticspipes.utils.SinkReply;
 import logisticspipes.utils.SinkReply.BufferMode;
 import logisticspipes.utils.item.ItemIdentifier;
+import logisticspipes.utils.item.ItemIdentifierInventory;
 import logisticspipes.utils.item.ItemIdentifierStack;
 import network.rs485.logisticspipes.connection.NeighborTileEntity;
 import network.rs485.logisticspipes.world.WorldCoordinatesWrapper;
@@ -110,31 +111,9 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 
 	@Override
 	public void writeToNBT(NBTTagCompound nbttagcompound) {
-		if(id != null)nbttagcompound.setString("resultid", id);
+		if(id != null)nbttagcompound.setString("resultname", id);
 		super.writeToNBT(nbttagcompound);
 	}
-
-	/*protected int findId(int increment) {
-		if (MainProxy.isClient(getWorld())) {
-			return id;
-		}
-		int potentialId = id;
-		boolean conflict = true;
-		while (conflict) {
-			potentialId += increment;
-			if (potentialId < 0) {
-				return 0;
-			}
-			conflict = false;
-			for (final ResultPipe sat : AllResults) {
-				if (sat.id == potentialId) {
-					conflict = true;
-					break;
-				}
-			}
-		}
-		return potentialId;
-	}*/
 
 	@SuppressWarnings("deprecation")
 	protected void ensureAllSatelliteStatus() {
@@ -148,32 +127,6 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 			AllResults.add(this);
 		}
 	}
-
-	/*@Override
-	public void setNextId(EntityPlayer player, int fid) {
-		id = findId(1);
-		ensureAllSatelliteStatus();
-		if (MainProxy.isClient(player.world)) {
-			final ModernPacket packet = PacketHandler.getPacket(SetIDPacket.class).setInc(true).setId(fid).setPosX(getX()).setPosY(getY()).setPosZ(getZ());
-			MainProxy.sendPacketToServer(packet);
-		} else {
-			final ModernPacket packet = PacketHandler.getPacket(ResultPipeID.class).setPipeID(id).setId(fid).setPosX(getX()).setPosY(getY()).setPosZ(getZ());
-			MainProxy.sendPacketToPlayer(packet, player);
-		}
-	}
-
-	@Override
-	public void setPrevId(EntityPlayer player, int fid) {
-		id = findId(-1);
-		ensureAllSatelliteStatus();
-		if (MainProxy.isClient(player.world)) {
-			final ModernPacket packet = PacketHandler.getPacket(SetIDPacket.class).setInc(false).setId(fid).setPosX(getX()).setPosY(getY()).setPosZ(getZ());
-			MainProxy.sendPacketToServer(packet);
-		} else {
-			final ModernPacket packet = PacketHandler.getPacket(ResultPipeID.class).setPipeID(id).setId(fid).setPosX(getX()).setPosY(getY()).setPosZ(getZ());
-			MainProxy.sendPacketToPlayer(packet, player);
-		}
-	}*/
 
 	@Override
 	public void onAllowedRemoval() {
@@ -442,7 +395,54 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 		}
 		return invUtil.getMultipleItems(itemToExtract, Math.min(count, available));
 	}
-
+	private ItemStack extractFromInventoryFiltered(TileEntity inv, ItemIdentifierInventory filter, boolean isExcluded, int filterInvLimit, EnumFacing dir) {
+		IInventoryUtil invUtil = SimpleServiceLocator.inventoryUtilFactory.getInventoryUtil(inv, dir.getOpposite());
+		ItemIdentifier wanteditem = null;
+		for (ItemIdentifier item : invUtil.getItemsAndCount().keySet()) {
+			if (isExcluded) {
+				boolean found = false;
+				for (int i = 0; i < filter.getSizeInventory() && i < filterInvLimit; i++) {
+					ItemIdentifierStack identStack = filter.getIDStackInSlot(i);
+					if (identStack == null) {
+						continue;
+					}
+					if (identStack.getItem().equalsWithoutNBT(item)) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					wanteditem = item;
+				}
+			} else {
+				boolean found = false;
+				for (int i = 0; i < filter.getSizeInventory() && i < filterInvLimit; i++) {
+					ItemIdentifierStack identStack = filter.getIDStackInSlot(i);
+					if (identStack == null) {
+						continue;
+					}
+					if (identStack.getItem().equalsWithoutNBT(item)) {
+						found = true;
+						break;
+					}
+				}
+				if (found) {
+					wanteditem = item;
+				}
+			}
+		}
+		if (wanteditem == null) {
+			return null;
+		}
+		int available = invUtil.itemCount(wanteditem);
+		if (available == 0) {
+			return null;
+		}
+		if (!useEnergy(neededEnergy() * Math.min(64, available))) {
+			return null;
+		}
+		return invUtil.getMultipleItems(wanteditem, Math.min(64, available));
+	}
 	@Override
 	public String getName(int id) {
 		return "gui.resultPipe.id";
@@ -460,5 +460,25 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 
 	public String getResultPipeName() {
 		return id;
+	}
+
+	public void extractCleanup(ItemIdentifierInventory _cleanupInventory, boolean cleanupModeIsExclude, int i) {
+		List<NeighborTileEntity<TileEntity>> adjacentCrafters = locateCrafters();
+		if (adjacentCrafters.size() > 0) {
+			ItemStack extracted = null;
+			NeighborTileEntity<TileEntity> adjacent = null;
+			for (NeighborTileEntity<TileEntity> adjacentCrafter : adjacentCrafters) {
+				adjacent = adjacentCrafter;
+				extracted = extractFromInventoryFiltered(adjacent.getTileEntity(), _cleanupInventory, cleanupModeIsExclude, i, adjacent.getDirection());
+				if (extracted != null && extracted.getCount() > 0) {
+					break;
+				}
+			}
+			if (extracted == null || extracted.getCount() == 0) {
+				return;
+			}
+			queueRoutedItem(SimpleServiceLocator.routedItemHelper.createNewTravelItem(extracted), EnumFacing.UP);
+			getCacheHolder().trigger(CacheTypes.Inventory);
+		}
 	}
 }

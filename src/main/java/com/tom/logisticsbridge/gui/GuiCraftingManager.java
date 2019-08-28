@@ -12,8 +12,11 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.ClickType;
+import net.minecraft.inventory.InventoryBasic;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextFormatting;
@@ -39,6 +42,8 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 	private EntityPlayer player;
 	private CraftingManager pipe;
 	private PopupMenu popup;
+	private Slot fakeSlot;
+	private InventoryBasic inv;
 	public GuiCraftingManager(EntityPlayer player, CraftingManager pipe) {
 		super(new ContainerCraftingManager(player, pipe, false));
 		this.player = player;
@@ -48,6 +53,8 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 		popup.add(I18n.format("gui.craftingManager.pickupUpgrade", 1));
 		popup.add(I18n.format("gui.craftingManager.pickupUpgrade", 2));
 		ySize++;
+		inv = new InventoryBasic("", false, 1);
+		fakeSlot = new Slot(inv, 0, 0, 0);
 	}
 	public void bindTexture(ResourceLocation loc){
 		mc.getTextureManager().bindTexture(loc);
@@ -85,7 +92,29 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 			slotIn.xPos = Integer.MIN_VALUE;
 			slotIn.yPos = Integer.MIN_VALUE;
 			GlStateManager.popMatrix();
-		}else super.drawSlot(slotIn);
+		}else{
+			ItemStack stack = slotIn.getStack();
+			if(slotIn.slotNumber < 27 && !stack.isEmpty() && stack.hasTagCompound() && isShiftKeyDown()){
+				NBTTagCompound info = stack.getSubCompound("moduleInformation");
+				NBTTagList list = info.getTagList("items", 10);
+				NBTTagCompound output = null;
+				for(int i = 0;i<list.tagCount();i++){
+					NBTTagCompound tag = list.getCompoundTagAt(i);
+					if(tag.getInteger("index") == 9){
+						output = tag;
+					}
+				}
+				if(output != null){
+					inv.setInventorySlotContents(0, new ItemStack(output));
+					fakeSlot.xPos = slotIn.xPos;
+					fakeSlot.yPos = slotIn.yPos;
+					super.drawSlot(fakeSlot);
+					inv.setInventorySlotContents(0, ItemStack.EMPTY);
+				}else
+					super.drawSlot(slotIn);
+			}else
+				super.drawSlot(slotIn);
+		}
 	}
 	/**
 	 * Draw the foreground layer for the GuiContainer (everything in front of the items)
@@ -156,10 +185,10 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 		String select = StringUtils.translate("gui.crafting.Select");
 		extentionControllerLeft.clear();
 		ConfigExtention ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.satellite"), new ItemStack(LPItems.pipeSatellite), 0);
-		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 40, guiTop + 25, 40, 10, select))));
+		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 45, guiTop + 25, 40, 10, select))));
 		extentionControllerLeft.addExtention(ce);
 		ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.result"), new ItemStack(LogisticsBridge.pipeResult), 1);
-		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(2, guiLeft - 40, guiTop + 25, 40, 10, select))));
+		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(2, guiLeft - 45, guiTop + 25, 40, 10, select))));
 		extentionControllerLeft.addExtention(ce);
 	}
 	@Override
@@ -209,9 +238,9 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 			} else {
 				fontRenderer.drawString(name, left + 9, top + 8, 0x404040);
 				if (pid == null || pid.isEmpty()) {
-					mc.fontRenderer.drawString(StringUtils.translate("gui.craftingManager.noConnection"), left + 55, top + 22, 0x404040);
+					mc.fontRenderer.drawString(StringUtils.translate("gui.craftingManager.noConnection"), left + 40, top + 22, 0x404040);
 				} else {
-					mc.fontRenderer.drawString(pid, left + 65 - mc.fontRenderer.getStringWidth(pid)/2, top + 22, 0x404040);
+					mc.fontRenderer.drawString(pid, left + 40 - mc.fontRenderer.getStringWidth(pid)/2, top + 22, 0x404040);
 				}
 			}
 		}
