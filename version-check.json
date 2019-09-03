@@ -1,10 +1,11 @@
 {
   "homepage": "https://www.curseforge.com/minecraft/mc-mods/logistics-bridge",
   "promos": {
-    "1.12.2-latest": "1.0.0",
-    "1.12.2-recommended": "1.0.0"
+    "1.12.2-latest": "1.1.0",
+    "1.12.2-recommended": "1.1.0"
   },
   "1.12.2": {
-    "1.0.0": "See changelog: First Release"
+  	"1.1.0": "Fixed AE Security station breaking AE Bridge and Crafting Manager.\nFixed AE Bridge and Crafting Manager not using channel.\nFixed AE Crafting Manager gui not syncing.\nImproved cascading autocrafting between systems.",
+    "1.0.0": "First Release"
   }
 }

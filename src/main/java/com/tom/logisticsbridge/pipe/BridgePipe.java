@@ -344,7 +344,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		List<ItemStack> prov = reqapi.getProvidedItems();
 		return bridge.getItems().stream().filter(st -> !prov.stream().anyMatch(s -> s.isItemEqual(st.obj) && ItemStack.areItemStackTagsEqual(s, st.obj))).
 				map(s -> new BridgeStack<>(ItemIdentifier.get(s.obj), s.size + s.requestableSize, s.craftable, 0)).
-				collect(Collectors.toMap(s -> s.obj, s -> (int)s.size));
+				collect(Collectors.toMap(s -> s.obj, s -> (int)s.size, (a, b) -> a + b, HashMap::new));
 	}
 
 	public ItemStack getMultipleItems(ItemIdentifier item, int count) {

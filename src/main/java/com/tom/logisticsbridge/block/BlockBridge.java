@@ -24,5 +24,4 @@ public class BlockBridge extends AEBaseTileBlock {
 	public TileEntity createNewTileEntity(World worldIn, int meta) {
 		return new TileEntityBridge();
 	}
-
 }

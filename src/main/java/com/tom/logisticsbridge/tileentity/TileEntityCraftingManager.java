@@ -19,6 +19,7 @@ import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.wrapper.InvWrapper;
 
 import com.tom.logisticsbridge.AE2Plugin;
+import com.tom.logisticsbridge.GuiHandler.GuiIDs;
 import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.item.VirtualPattern;
 import com.tom.logisticsbridge.item.VirtualPattern.VirtualPatternHandler;
@@ -28,6 +29,7 @@ import com.tom.logisticsbridge.part.PartSatelliteBus;
 
 import appeng.api.config.Actionable;
 import appeng.api.implementations.ICraftingPatternItem;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridHost;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.ICraftingPatternDetails;
@@ -60,6 +62,7 @@ public class TileEntityCraftingManager extends AENetworkInvTile implements ITick
 	private IActionSource as = new MachineSource(this);
 	private List<ItemStack> toInsert = new ArrayList<>();
 	public TileEntityCraftingManager() {
+		getProxy().setFlags(GridFlags.REQUIRE_CHANNEL);
 		inv.addInventoryChangeListener(this);
 	}
 
@@ -409,5 +412,10 @@ public class TileEntityCraftingManager extends AENetworkInvTile implements ITick
 		}
 
 		return ret;
+	}
+	public void openGui(EntityPlayer playerIn){
+		playerIn.openGui(LogisticsBridge.modInstance, GuiIDs.CraftingManager.ordinal(), world, pos.getX(), pos.getY(), pos.getZ());
+		ModernPacket packet = PacketHandler.getPacket(SetIDPacket.class).setName(supplyID).setId(0).setPosX(pos.getX()).setPosY(pos.getY()).setPosZ(pos.getZ());
+		MainProxy.sendPacketToPlayer(packet, playerIn);
 	}
 }

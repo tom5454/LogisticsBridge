@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -74,6 +75,7 @@ import appeng.api.parts.IPartHost;
 import appeng.api.storage.IStorageChannel;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.util.AEPartLocation;
+import appeng.block.AEBaseItemBlock;
 import appeng.core.Api;
 import appeng.core.CreativeTab;
 import appeng.core.features.AEFeature;
@@ -105,7 +107,7 @@ dependencies = LogisticsBridge.DEPS, updateJSON = LogisticsBridge.UPDATE)
 public class LogisticsBridge {
 	public static final String ID = "logisticsbridge";
 	public static final String NAME = "Logistics Bridge";
-	public static final String VERSION = "1.0.0";
+	public static final String VERSION = "1.1.0";
 	public static final String DEPS = "required-after:appliedenergistics2;required-after:logisticspipes@[0.10.2.203,)";
 	public static final String UPDATE = "https://github.com/tom5454/LogisticsBridge/blob/master/version-check.json";
 	public static final Logger log = LogManager.getLogger(NAME);
@@ -153,8 +155,8 @@ public class LogisticsBridge {
 
 		bridge = new BlockBridge().setUnlocalizedName("lb.bridge").setCreativeTab(CreativeTab.instance);
 		craftingManager = new BlockCraftingManager().setUnlocalizedName("lb.crafting_managerAE").setCreativeTab(CreativeTab.instance);
-		registerBlock(bridge);
-		registerBlock(craftingManager);
+		registerBlock(bridge, () -> new AEBaseItemBlock(bridge));
+		registerBlock(craftingManager, () -> new AEBaseItemBlock(craftingManager));
 		registerItem(virtualPattern, true);
 		registerItem(logisticsFakeItem, true);
 		registerItem(packageItem, true);
@@ -350,8 +352,11 @@ public class LogisticsBridge {
 	}
 
 	public static void registerBlock(Block block){
+		registerBlock(block, () -> new ItemBlock(block));
+	}
+	public static void registerBlock(Block block, Supplier<Item> itemBlock){
 		registerOnlyBlock(block);
-		registerItem(new ItemBlock(block), true);
+		registerItem(itemBlock.get(), true);
 	}
 	public static void registerOnlyBlock(Block block){
 		block.setRegistryName(block.getUnlocalizedName().substring(5));
@@ -561,15 +566,6 @@ public class LogisticsBridge {
 			}
 		}
 	}
-	/*public static void processResSetID(EntityPlayer player, ResultPipeID pck){
-		AEPartLocation side = AEPartLocation.fromOrdinal(pck.side - 1);
-		IPartHost ph = pck.getTile(player.world, IPartHost.class);
-		if(ph == null)return;
-		IPart p = ph.getPart(side);
-		if(p instanceof IIdPipe){
-			((IIdPipe) p).setPipeID(pck.id, pck.pipeID);
-		}
-	}*/
 
 	public static IIdPipe processReqIDList(EntityPlayer player, RequestIDListPacket pck) {
 		AEPartLocation side = AEPartLocation.fromOrdinal(pck.side - 1);

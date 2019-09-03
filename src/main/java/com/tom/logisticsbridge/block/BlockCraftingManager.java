@@ -11,8 +11,6 @@ import net.minecraft.world.World;
 
 import net.minecraftforge.fml.common.Optional;
 
-import com.tom.logisticsbridge.GuiHandler.GuiIDs;
-import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.tileentity.TileEntityCraftingManager;
 
 import appeng.block.AEBaseTileBlock;
@@ -36,7 +34,10 @@ public class BlockCraftingManager extends AEBaseTileBlock {
 	public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
 		if(super.onBlockActivated(worldIn, pos, state, playerIn, hand, facing, hitX, hitY, hitZ))return true;
 		if(!worldIn.isRemote){
-			playerIn.openGui(LogisticsBridge.modInstance, GuiIDs.CraftingManager.ordinal(), worldIn, pos.getX(), pos.getY(), pos.getZ());
+			TileEntity te = worldIn.getTileEntity(pos);
+			if(te instanceof TileEntityCraftingManager){
+				((TileEntityCraftingManager)te).openGui(playerIn);
+			}
 		}
 		return true;
 	}
