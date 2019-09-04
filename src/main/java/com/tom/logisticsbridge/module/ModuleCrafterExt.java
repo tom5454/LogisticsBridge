@@ -70,6 +70,7 @@ public class ModuleCrafterExt extends ModuleCrafter {
 		}
 
 		IRouter defSat = getSatelliteRouterByID(mngr.getSatelliteUUID());
+		if(defSat == null)return null;
 
 		IRequestItems[] target = new IRequestItems[9];
 		for (int i = 0; i < 9; i++) {
@@ -170,12 +171,14 @@ public class ModuleCrafterExt extends ModuleCrafter {
 	}
 
 	public IRouter getSatelliteRouterByID(UUID id) {
+		if(id == null)return null;
 		int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(id);
 		return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
 	}
 	public IRouter getResultRouterByID(UUID id) {
-		int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(id);
-		return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
+		if(id == null)return null;
+		int resultRouterId = SimpleServiceLocator.routerManager.getIDforUUID(id);
+		return SimpleServiceLocator.routerManager.getRouter(resultRouterId);
 	}
 	@Override
 	public void canProvide(RequestTreeNode tree, RequestTree root, List<IFilter> filters) {
