@@ -17,6 +17,7 @@ import net.minecraft.world.World;
 
 import net.minecraftforge.common.util.Constants.NBT;
 
+import com.tom.logisticsbridge.AE2Plugin;
 import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.api.IDynamicPatternDetails;
 
@@ -63,7 +64,7 @@ public class VirtualPattern extends Item implements ICraftingPatternItem {
 		return CACHE.computeIfAbsent(ot, VirtualPattern::create);
 	}
 	private static ICraftingPatternDetails create(NBTTagCompound ot){
-		ItemStack is = new ItemStack(LogisticsBridge.virtualPattern);
+		ItemStack is = new ItemStack(AE2Plugin.virtualPattern);
 		NBTTagCompound dyTag = ot.getCompoundTag(DYNAMIC_PATTERN_ID);
 		ot.removeTag(DYNAMIC_PATTERN_ID);
 		NBTTagCompound in = ot.getCompoundTag("in");

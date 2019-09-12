@@ -1,5 +1,6 @@
 package com.tom.logisticsbridge.tileentity;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,6 +22,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.ITickable;
+import net.minecraft.util.text.TextComponentString;
 
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.LoaderState;
@@ -75,11 +77,13 @@ import appeng.tile.grid.AENetworkInvTile;
 import appeng.util.inv.IMEAdaptor;
 import appeng.util.inv.InvOperation;
 
-public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITickable, IActionSource, ICraftingRequester, ICellContainer, ICraftingProvider, ICraftingCallback, IMEInventoryHandler<IAEItemStack>, IItemHandlerModifiable, IDynamicPatternDetails {
+public class TileEntityBridgeAE extends AENetworkInvTile implements IGridHost, ITickable, IActionSource,
+ICraftingRequester, ICellContainer, ICraftingProvider, ICraftingCallback, IMEInventoryHandler<IAEItemStack>,
+IItemHandlerModifiable, IDynamicPatternDetails, IBridge {
 	private Optional<IActionHost> machine = Optional.of(this);
 	private Set<ICraftingLink> links = new HashSet<>();
 	private Set<ICraftingPatternDetails> craftings = new HashSet<>();
-	public Req reqapi;
+	private Req reqapi;
 	private MEMonitorIInventory meInv = new MEMonitorIInventory(new IMEAdaptor(this, this));
 	@SuppressWarnings("rawtypes")
 	private List<IMEInventoryHandler> cellArray = Collections.singletonList(this);
@@ -92,9 +96,10 @@ public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITi
 	private List<ItemStack> insertingStacks = new ArrayList<>();
 	private final IAEItemStack FAKE_ITEM = ITEMS.createStack(new ItemStack(LogisticsBridge.logisticsFakeItem, 1));
 	private long lastInjectTime;
+	private WeakReference<OpResult> lastPush;
 	private boolean disableLP;
 
-	public TileEntityBridge() {
+	public TileEntityBridgeAE() {
 		getProxy().setFlags(GridFlags.REQUIRE_CHANNEL);
 	}
 
@@ -132,6 +137,7 @@ public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITi
 		return AECableType.SMART;
 	}
 
+	@Override
 	public List<BridgeStack<ItemStack>> getItems(){
 		if(this.getProxy().getNode() == null || disableLP)return Collections.emptyList();
 		IStorageGrid g = this.getProxy().getNode().getGrid().getCache(IStorageGrid.class);
@@ -148,6 +154,7 @@ public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITi
 		return list;
 	}
 
+	@Override
 	public long countItem(ItemStack stack, boolean requestable){
 		if(this.getProxy().getNode() == null)return 0;
 		int buffered = 0;
@@ -170,6 +177,7 @@ public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITi
 		return is == null ? 0 : requestable ? is.getStackSize()+is.getCountRequestable()+buffered : is.getStackSize()+buffered;
 	}
 
+	@Override
 	public ItemStack extractStack(ItemStack stack, int count, boolean simulate){
 		if(this.getProxy().getNode() == null)return ItemStack.EMPTY;
 		for(int i = 0;i<dynInv.getSizeInventory();i++){
@@ -186,6 +194,7 @@ public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITi
 		return is == null ? ItemStack.EMPTY : is.createItemStack();
 	}
 
+	@Override
 	public void craftStack(ItemStack stack, int count, boolean simulate){
 		if(this.getProxy().getNode() == null)return;
 		ICraftingGrid g = this.getProxy().getNode().getGrid().getCache(ICraftingGrid.class);
@@ -444,7 +453,8 @@ public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITi
 			if(table.getStackInSlot(i).getItem() != LogisticsBridge.logisticsFakeItem)
 				insertingStacks.add(table.getStackInSlot(i));
 		}
-		boolean pushed = reqapi.performRequest(patternDetails.getOutputs()[0].asItemStackRepresentation(), true).missing.isEmpty();
+		OpResult opres = reqapi.performRequest(patternDetails.getOutputs()[0].asItemStackRepresentation(), true);
+		boolean pushed = opres.missing.isEmpty();
 		insertingStacks.clear();
 		if(pushed){
 			lastInjectTime = world.getTotalWorldTime();
@@ -452,6 +462,8 @@ public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITi
 				if(table.getStackInSlot(i).getItem() != LogisticsBridge.logisticsFakeItem)
 					dynInv.insert(table.removeStackFromSlot(i));
 			}
+		}else{
+			lastPush = new WeakReference<>(opres);
 		}
 		return pushed;
 	}
@@ -518,5 +530,32 @@ public class TileEntityBridge extends AENetworkInvTile implements IGridHost, ITi
 				inv.setInventorySlotContents(j, new ItemStack(nbttagcompound));
 			}
 		}
+	}
+
+	public String infoString() {
+		StringBuilder b = new StringBuilder();
+		if(disableLP)b.append("  disableLP flag is stuck\n");
+		if(lastPush != null && lastPush.get() != null)b.append("  Missing items:\n");
+		return b.toString();
+	}
+
+	public void infoMessage(EntityPlayer playerIn) {
+		String info = infoString();
+		if(info.isEmpty())info = "  No problems";
+		TextComponentString text = new TextComponentString("AE Bridge\n" + info);
+		if(lastPush != null && lastPush.get() != null){
+			OpResult or = lastPush.get();
+			for(ItemStack i : or.missing){
+				text.appendText("  ");
+				text.appendSibling(i.getTextComponent());
+				text.appendText("\n");
+			}
+		}
+		playerIn.sendMessage(text);
+	}
+
+	@Override
+	public void setReqAPI(Req reqapi) {
+		this.reqapi = reqapi;
 	}
 }

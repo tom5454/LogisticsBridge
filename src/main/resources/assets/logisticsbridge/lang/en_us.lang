@@ -8,6 +8,7 @@ item.logisticspipes.pipe_lb.craftingmanager.tip1=Type: AutoCrafting
 item.logisticspipes.pipe_lb.craftingmanager.tip2= - Doesn't need an inventory
 item.logisticspipes.pipe_lb.craftingmanager.tip3= - Can contain 27 Crafting modules with 2 Upgrade slots.
 item.logisticspipes.pipe_lb.craftingmanager.tip4= - Used with a %cYELLOW Result Pipe %cRESET %cGRAY & %cYELLOW Satellite Pipe %cRESET %cGRAY.
+item.upgrade.info.crafting_manager=Crafting Manager
 
 item.logisticspipes.pipe_lb.resultpipe.name=Result Logistics Pipe
 item.logisticspipes.pipe_lb.resultpipe.tip1=Type: Item Source
@@ -15,12 +16,16 @@ item.logisticspipes.pipe_lb.resultpipe.tip2= - Attaches to an inventory
 item.logisticspipes.pipe_lb.resultpipe.tip3= - Sends 16 items into the network to fulfill crafting requests.
 item.logisticspipes.pipe_lb.resultpipe.tip4= - Used with a %cYELLOW Crafting Manager %cRESET %cGRAY.
 
+item.logisticspipes.upgrade_lb.buffer_upgrade.name=Crafting Buffer Upgrade
+item.logisticspipes.upgrade_lb.buffer_upgrade.tip1=Uses attached chest to buffer crafting ingredients.
+
 item.lb.logisticsFakeItem.name=Logistics Craft Token
 item.lb.package.name=Empty Package
 item.lb.virtPattern.name=Virtual Encoded Pattern
 item.appliedenergistics2.multi_part.satellite_bus.name=Satellite Bus
 
 tile.lb.bridge.name=AE Bridge
+tile.lb.bridge.rs.name=RS Bridge
 tile.lb.crafting_managerAE.name=Crafting Manager
 
 tooltip.logisticsbridge.fakeItemNull=Auto Craft token

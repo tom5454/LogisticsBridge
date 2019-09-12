@@ -19,6 +19,7 @@ import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
+import com.tom.logisticsbridge.AE2Plugin;
 import com.tom.logisticsbridge.HideFakeItem;
 import com.tom.logisticsbridge.LogisticsBridge;
 
@@ -45,30 +46,32 @@ public class ClientProxy extends CommonProxy {
 			addRenderToRegistry(item, 0, item.getUnlocalizedName().substring(5));
 		}
 		renderers = null;
-		try {
-			FeatureFactory ff = Api.INSTANCE.definitions().getRegistry();
-			Field bootstrapComponentsF = FeatureFactory.class.getDeclaredField("bootstrapComponents");
-			bootstrapComponentsF.setAccessible(true);
-			Map<Class<? extends IBootstrapComponent>, List<IBootstrapComponent>> bootstrapComponents = (Map<Class<? extends IBootstrapComponent>, List<IBootstrapComponent>>) bootstrapComponentsF.get(ff);
-			List<IBootstrapComponent> itemRegComps = bootstrapComponents.get(IModelRegistrationComponent.class);
-			ItemVariantsComponent partReg = null;
-			Field ItemVariantsComponent_item = ItemVariantsComponent.class.getDeclaredField("item");
-			ItemVariantsComponent_item.setAccessible(true);
-			for (IBootstrapComponent iBootstrapComponent : itemRegComps) {
-				if(iBootstrapComponent instanceof ItemVariantsComponent){
-					Item item = (Item) ItemVariantsComponent_item.get(iBootstrapComponent);
-					if(item == ItemPart.instance){
-						partReg = (ItemVariantsComponent) iBootstrapComponent;
-						break;
+		if(LogisticsBridge.aeLoaded){
+			try {
+				FeatureFactory ff = Api.INSTANCE.definitions().getRegistry();
+				Field bootstrapComponentsF = FeatureFactory.class.getDeclaredField("bootstrapComponents");
+				bootstrapComponentsF.setAccessible(true);
+				Map<Class<? extends IBootstrapComponent>, List<IBootstrapComponent>> bootstrapComponents = (Map<Class<? extends IBootstrapComponent>, List<IBootstrapComponent>>) bootstrapComponentsF.get(ff);
+				List<IBootstrapComponent> itemRegComps = bootstrapComponents.get(IModelRegistrationComponent.class);
+				ItemVariantsComponent partReg = null;
+				Field ItemVariantsComponent_item = ItemVariantsComponent.class.getDeclaredField("item");
+				ItemVariantsComponent_item.setAccessible(true);
+				for (IBootstrapComponent iBootstrapComponent : itemRegComps) {
+					if(iBootstrapComponent instanceof ItemVariantsComponent){
+						Item item = (Item) ItemVariantsComponent_item.get(iBootstrapComponent);
+						if(item == ItemPart.instance){
+							partReg = (ItemVariantsComponent) iBootstrapComponent;
+							break;
+						}
 					}
 				}
+				Field ItemVariantsComponent_resources = ItemVariantsComponent.class.getDeclaredField("resources");
+				ItemVariantsComponent_resources.setAccessible(true);
+				HashSet<ResourceLocation> resources = (HashSet<ResourceLocation>) ItemVariantsComponent_resources.get(partReg);
+				resources.addAll(AE2Plugin.SATELLITE_BUS.getItemModels());
+			} catch (Exception e) {
+				throw new RuntimeException("Error registering part model", e);
 			}
-			Field ItemVariantsComponent_resources = ItemVariantsComponent.class.getDeclaredField("resources");
-			ItemVariantsComponent_resources.setAccessible(true);
-			HashSet<ResourceLocation> resources = (HashSet<ResourceLocation>) ItemVariantsComponent_resources.get(partReg);
-			resources.addAll(LogisticsBridge.SATELLITE_BUS.getItemModels());
-		} catch (Exception e) {
-			throw new RuntimeException("Error registering part model", e);
 		}
 		//OBJLoader.INSTANCE.addDomain(LogisticsBridge.ID);
 	}
@@ -90,10 +93,12 @@ public class ClientProxy extends CommonProxy {
 	@Override
 	public void init() {
 		try {
-			GuiMEMonitorable_Repo = GuiMEMonitorable.class.getDeclaredField("repo");
-			GuiMEMonitorable_Repo.setAccessible(true);
-			ItemRepo_myPartitionList = ItemRepo.class.getDeclaredField("myPartitionList");
-			ItemRepo_myPartitionList.setAccessible(true);
+			if(LogisticsBridge.aeLoaded){
+				GuiMEMonitorable_Repo = GuiMEMonitorable.class.getDeclaredField("repo");
+				GuiMEMonitorable_Repo.setAccessible(true);
+				ItemRepo_myPartitionList = ItemRepo.class.getDeclaredField("myPartitionList");
+				ItemRepo_myPartitionList.setAccessible(true);
+			}
 		} catch (SecurityException | NoSuchFieldException e) {
 			throw new RuntimeException(e);
 		}
@@ -103,26 +108,26 @@ public class ClientProxy extends CommonProxy {
 	@SubscribeEvent
 	public void onDrawBackgroundEventPost(GuiScreenEvent.BackgroundDrawnEvent event) {
 		Minecraft mc = Minecraft.getMinecraft();
-		if(mc.currentScreen instanceof GuiMEMonitorable){
+		if(LogisticsBridge.aeLoaded && mc.currentScreen instanceof GuiMEMonitorable){
 			GuiMEMonitorable g = (GuiMEMonitorable) mc.currentScreen;
-			if (LogisticsBridge.HIDE_FAKE_ITEM == null) {
-				LogisticsBridge.HIDE_FAKE_ITEM = new HideFakeItem();
+			if (AE2Plugin.HIDE_FAKE_ITEM == null) {
+				AE2Plugin.HIDE_FAKE_ITEM = new HideFakeItem();
 			}
 			try {
 				ItemRepo r = (ItemRepo) GuiMEMonitorable_Repo.get(g);
 				IPartitionList<IAEItemStack> pl = (IPartitionList<IAEItemStack>) ItemRepo_myPartitionList.get(r);
 				if(pl instanceof MergedPriorityList){
 					MergedPriorityList<IAEItemStack> ml = (MergedPriorityList<IAEItemStack>) pl;
-					Collection<IPartitionList<IAEItemStack>> negative = (Collection<IPartitionList<IAEItemStack>>) LogisticsBridge.MergedPriorityList_negative.get(ml);
-					if(!negative.contains(LogisticsBridge.HIDE_FAKE_ITEM)){
-						negative.add(LogisticsBridge.HIDE_FAKE_ITEM);
+					Collection<IPartitionList<IAEItemStack>> negative = (Collection<IPartitionList<IAEItemStack>>) AE2Plugin.MergedPriorityList_negative.get(ml);
+					if(!negative.contains(AE2Plugin.HIDE_FAKE_ITEM)){
+						negative.add(AE2Plugin.HIDE_FAKE_ITEM);
 						r.updateView();
 					}
 				}else{
 					MergedPriorityList<IAEItemStack> mlist = new MergedPriorityList<>();
 					ItemRepo_myPartitionList.set(r, mlist);
 					if(pl != null)mlist.addNewList(pl, true);
-					mlist.addNewList(LogisticsBridge.HIDE_FAKE_ITEM, false);
+					mlist.addNewList(AE2Plugin.HIDE_FAKE_ITEM, false);
 					r.updateView();
 				}
 			} catch (Exception e) {
@@ -132,7 +137,9 @@ public class ClientProxy extends CommonProxy {
 	@SubscribeEvent
 	public void loadModels(ModelRegistryEvent ev){
 		Minecraft mc = Minecraft.getMinecraft();
-		mc.getRenderItem().getItemModelMesher().register(ItemPart.instance, 1024, LogisticsBridge.SATELLITE_BUS.getItemModels().get(0));
-		ModelLoader.setCustomModelResourceLocation(ItemPart.instance, 1024, LogisticsBridge.SATELLITE_BUS.getItemModels().get(0));
+		if(LogisticsBridge.aeLoaded){
+			mc.getRenderItem().getItemModelMesher().register(ItemPart.instance, 1024, AE2Plugin.SATELLITE_BUS.getItemModels().get(0));
+			ModelLoader.setCustomModelResourceLocation(ItemPart.instance, 1024, AE2Plugin.SATELLITE_BUS.getItemModels().get(0));
+		}
 	}
 }

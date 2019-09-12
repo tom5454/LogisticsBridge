@@ -1,7 +1,10 @@
 package com.tom.logisticsbridge.module;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import net.minecraft.entity.player.EntityPlayer;
 
@@ -69,31 +72,39 @@ public class ModuleCrafterExt extends ModuleCrafter {
 			return null;
 		}
 
+		boolean buffered = mngr.isBuffered();
+
 		IRouter defSat = getSatelliteRouterByID(mngr.getSatelliteUUID());
 		if(defSat == null)return null;
 
 		IRequestItems[] target = new IRequestItems[9];
-		for (int i = 0; i < 9; i++) {
-			target[i] = defSat.getPipe();
-		}
-
-		boolean hasSatellite = isSatelliteConnected();
-		if (!hasSatellite) {
-			return null;
-		}
-		if (!getUpgradeManager().isAdvancedSatelliteCrafter()) {
-			IRouter r = getSatelliteRouter(-1);
-			if (r != null) {
-				IRequestItems sat = r.getPipe();
-				for (int i = 6; i < 9; i++) {
-					target[i] = sat;
-				}
-			}
-		} else {
+		if(buffered){
 			for (int i = 0; i < 9; i++) {
-				IRouter r = getSatelliteRouter(i);
+				target[i] = this;
+			}
+		}else{
+			for (int i = 0; i < 9; i++) {
+				target[i] = defSat.getPipe();
+			}
+
+			boolean hasSatellite = isSatelliteConnected();
+			if (!hasSatellite) {
+				return null;
+			}
+			if (!getUpgradeManager().isAdvancedSatelliteCrafter()) {
+				IRouter r = getSatelliteRouter(-1);
 				if (r != null) {
-					target[i] = r.getPipe();
+					IRequestItems sat = r.getPipe();
+					for (int i = 6; i < 9; i++) {
+						target[i] = sat;
+					}
+				}
+			} else {
+				for (int i = 0; i < 9; i++) {
+					IRouter r = getSatelliteRouter(i);
+					if (r != null) {
+						target[i] = r.getPipe();
+					}
 				}
 			}
 		}
@@ -112,7 +123,7 @@ public class ModuleCrafterExt extends ModuleCrafter {
 			} else {
 				req = new ItemResource(resourceStack, target[i]);
 			}
-			template.addRequirement(req, new CraftingChassieInformation(i, getPositionInt()));
+			template.addRequirement(req, new BufferInformation(i, getPositionInt()));
 		}
 
 		int liquidCrafter = getUpgradeManager().getFluidCrafter();
@@ -231,6 +242,43 @@ public class ModuleCrafterExt extends ModuleCrafter {
 	public LogisticsItemOrder fullFill(LogisticsPromise promise, IRequestItems destination, IAdditionalTargetInformation info) {
 		if(!(_service instanceof CraftingManager))return null;
 		CraftingManager mngr = (CraftingManager) _service;
+		if(mngr.isBuffered()){
+			List<Pair<IRequestItems, ItemIdentifierStack>> rec = new ArrayList<>();
+			IRouter defSat = getSatelliteRouterByID(mngr.getSatelliteUUID());
+			if(defSat == null)return null;
+			IRequestItems[] target = new IRequestItems[9];
+			for (int i = 0; i < 9; i++) {
+				target[i] = defSat.getPipe();
+			}
+
+			boolean hasSatellite = isSatelliteConnected();
+			if (!hasSatellite) {
+				return null;
+			}
+			if (!getUpgradeManager().isAdvancedSatelliteCrafter()) {
+				IRouter r = getSatelliteRouter(-1);
+				if (r != null) {
+					IRequestItems sat = r.getPipe();
+					for (int i = 6; i < 9; i++) {
+						target[i] = sat;
+					}
+				}
+			} else {
+				for (int i = 0; i < 9; i++) {
+					IRouter r = getSatelliteRouter(i);
+					if (r != null) {
+						target[i] = r.getPipe();
+					}
+				}
+			}
+
+			for (int i = 0; i < target.length; i++) {
+				ItemIdentifierStack mat = getMaterials(i);
+				if(mat != null)rec.add(Pair.of(target[i], mat));
+			}
+
+			mngr.addBuffered(rec);
+		}
 		IRouter resultR = getResultRouterByID(mngr.getResultUUID());
 		if(resultR == null)return null;
 		CoreRoutedPipe coreRoutedPipe = resultR.getPipe();
@@ -273,5 +321,12 @@ public class ModuleCrafterExt extends ModuleCrafter {
 			}
 			return;
 		}
+	}
+	public static class BufferInformation extends CraftingChassieInformation {
+
+		public BufferInformation(int craftingSlot, int moduleSlot) {
+			super(craftingSlot, moduleSlot);
+		}
+
 	}
 }

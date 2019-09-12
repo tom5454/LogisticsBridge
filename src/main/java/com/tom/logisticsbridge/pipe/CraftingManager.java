@@ -1,5 +1,6 @@
 package com.tom.logisticsbridge.pipe;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -11,12 +12,15 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextComponentTranslation;
 
@@ -25,6 +29,7 @@ import net.minecraftforge.fml.client.FMLClientHandler;
 import com.tom.logisticsbridge.ASMUtil;
 import com.tom.logisticsbridge.GuiHandler.GuiIDs;
 import com.tom.logisticsbridge.LogisticsBridge;
+import com.tom.logisticsbridge.module.BufferUpgrade;
 import com.tom.logisticsbridge.module.ModuleCrafterExt;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
@@ -33,8 +38,10 @@ import logisticspipes.LPItems;
 import logisticspipes.api.ILPPipeTile;
 import logisticspipes.gui.GuiChassiPipe;
 import logisticspipes.interfaces.IHeadUpDisplayRenderer;
+import logisticspipes.interfaces.IInventoryUtil;
 import logisticspipes.interfaces.IPipeServiceProvider;
 import logisticspipes.interfaces.IWorldProvider;
+import logisticspipes.interfaces.routing.IRequestItems;
 import logisticspipes.items.ItemModule;
 import logisticspipes.logisticspipes.ItemModuleInformationManager;
 import logisticspipes.modules.ChassiModule;
@@ -53,8 +60,11 @@ import logisticspipes.security.SecuritySettings;
 import logisticspipes.textures.Textures;
 import logisticspipes.textures.Textures.TextureType;
 import logisticspipes.utils.item.ItemIdentifier;
+import logisticspipes.utils.item.ItemIdentifierStack;
+import network.rs485.logisticspipes.connection.NeighborTileEntity;
 
 public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
+	private List<List<Pair<IRequestItems, ItemIdentifierStack>>> buffered = new ArrayList<>();
 	public static TextureType TEXTURE = Textures.empty;
 	public static Function<CoreUnroutedPipe, ILPPipeTile> getContainer;
 	static {
@@ -137,26 +147,13 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		newmodule.registerHandler(world, service);
 		return newmodule;
 	}
-	@Override
-	public IHeadUpDisplayRenderer getRenderer() {
-		return null;
-	}
-	@Override
-	public void startWatching() {
-	}
-	@Override
-	public void stopWatching() {
-	}
-	@Override
-	public void playerStartWatching(EntityPlayer player, int mode) {
-	}
-	@Override
-	public void playerStopWatching(EntityPlayer player, int mode) {
-	}
-	@Override
-	public void nextOrientation() {
-		super.nextOrientation();
-	}
+
+	@Override public IHeadUpDisplayRenderer getRenderer() {return null;}
+	@Override public void startWatching() {}
+	@Override public void stopWatching() {}
+	@Override public void playerStartWatching(EntityPlayer player, int mode) {}
+	@Override public void playerStopWatching(EntityPlayer player, int mode) {}
+
 	@Override
 	public boolean handleClick(EntityPlayer entityplayer, SecuritySettings settings) {
 		handleClick0(entityplayer, settings);
@@ -235,18 +232,6 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		MainProxy.sendPacketToPlayer(packet, entityPlayer);
 	}
 
-	/*@Override
-	public void setNextId(EntityPlayer player, int fid) {
-		if(fid == 0)setNextSatellite(player);
-		else setNextResult(player);
-	}
-
-	@Override
-	public void setPrevId(EntityPlayer player, int fid) {
-		if(fid == 0)setPrevSatellite(player);
-		else setPrevResult(player);
-	}*/
-
 	@Override
 	public String getPipeID(int id) {
 		return id == 0 ? satelliteId : resultId;
@@ -313,47 +298,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	public String getName(int id) {
 		return null;
 	}
-	/*public void setNextSatellite(EntityPlayer player) {
-		if (MainProxy.isClient(player.world)) {
-			final CoordinatesPacket packet = PacketHandler.getPacket(SetIDPacket.class).setPos(CraftingManager.this).setInc(true).setId(0);
-			MainProxy.sendPacketToServer(packet);
-		} else {
-			satelliteId = getNextConnectSatelliteId(false);
-			final CoordinatesPacket packet = PacketHandler.getPacket(ResultPipeID.class).setPipeID(satelliteId).setId(0).setPos(CraftingManager.this);
-			MainProxy.sendPacketToPlayer(packet, player);
-		}
-	}
 
-	public void setPrevSatellite(EntityPlayer player) {
-		if (MainProxy.isClient(player.world)) {
-			final CoordinatesPacket packet = PacketHandler.getPacket(SetIDPacket.class).setPos(CraftingManager.this).setInc(false).setId(0);
-			MainProxy.sendPacketToServer(packet);
-		} else {
-			satelliteId = getNextConnectSatelliteId(true);
-			final CoordinatesPacket packet = PacketHandler.getPacket(ResultPipeID.class).setPipeID(satelliteId).setId(0).setPos(CraftingManager.this);
-			MainProxy.sendPacketToPlayer(packet, player);
-		}
-	}
-	public void setNextResult(EntityPlayer player) {
-		if (MainProxy.isClient(player.world)) {
-			final CoordinatesPacket packet = PacketHandler.getPacket(SetIDPacket.class).setPos(CraftingManager.this).setInc(true).setId(1);
-			MainProxy.sendPacketToServer(packet);
-		} else {
-			resultId = getNextConnectResultId(false);
-			final CoordinatesPacket packet = PacketHandler.getPacket(ResultPipeID.class).setPipeID(resultId).setId(1).setPos(CraftingManager.this);
-			MainProxy.sendPacketToPlayer(packet, player);
-		}
-	}
-	public void setPrevResult(EntityPlayer player) {
-		if (MainProxy.isClient(player.world)) {
-			final CoordinatesPacket packet = PacketHandler.getPacket(SetIDPacket.class).setPos(CraftingManager.this).setInc(false).setId(1);
-			MainProxy.sendPacketToServer(packet);
-		} else {
-			resultId = getNextConnectResultId(true);
-			final CoordinatesPacket packet = PacketHandler.getPacket(ResultPipeID.class).setPipeID(resultId).setId(1).setPos(CraftingManager.this);
-			MainProxy.sendPacketToPlayer(packet, player);
-		}
-	}*/
 	private UUID getUUIDForSatelliteName(String name) {
 		for(PipeItemsSatelliteLogistics pipe: PipeItemsSatelliteLogistics.AllSatellites) {
 			if (pipe.getSatellitePipeName().equals(name)) {
@@ -406,5 +351,84 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 					.collect(Collectors.toList());
 		}
 		return Collections.emptyList();
+	}
+	public boolean isBuffered(){
+		for(int i = 0;i<9;i++){
+			if(upgradeManager.getUpgrade(i) instanceof BufferUpgrade)
+				return true;
+		}
+		return false;
+	}
+
+	public void addBuffered(List<Pair<IRequestItems, ItemIdentifierStack>> rec) {
+		buffered.add(rec);
+	}
+
+	@Override
+	public void enabledUpdateEntity() {
+		super.enabledUpdateEntity();
+
+		if(!isNthTick(5))return;
+
+		if(!buffered.isEmpty() && isBuffered()) {
+			final NeighborTileEntity<TileEntity> pointedItemHandler = getPointedItemHandler();
+			if(canUseEnergy(neededEnergy()) && pointedItemHandler != null && pointedItemHandler.isItemHandler()){
+				IInventoryUtil util = pointedItemHandler.getInventoryUtil();
+				for (List<Pair<IRequestItems, ItemIdentifierStack>> map : buffered) {
+					if(map.stream().map(Pair::getValue).allMatch(i -> util.itemCount(i.getItem()) >= i.getStackSize())){
+						for (Pair<IRequestItems, ItemIdentifierStack> en : map) {
+							ItemIdentifierStack toSend = en.getValue();
+							ItemStack removed = util.getMultipleItems(toSend.getItem(), toSend.getStackSize());
+							if (removed != null && !removed.isEmpty()) {
+								sendStack(removed, en.getKey().getID(), ItemSendMode.Fast, null);
+							}
+						}
+						useEnergy(neededEnergy(), true);
+						buffered.remove(map);
+						break;
+					}
+				}
+			}
+		}
+	}
+	/*private int sendStack(ItemIdentifierStack stack, IRequestItems dest, IInventoryUtil util, IAdditionalTargetInformation info, EnumFacing dir) {
+		ItemIdentifier item = stack.getItem();
+
+		int available = util.itemCount(item);
+		if (available == 0) {
+			return 0;
+		}
+
+		int wanted = Math.min(available, stack.getStackSize());
+		wanted = Math.min(wanted, item.getMaxStackSize());
+		SinkReply reply = LogisticsManager.canSink(dest.getRouter(), null, true, stack.getItem(), null, true, false);
+		if (reply != null) {// some pipes are not aware of the space in the adjacent inventory, so they return null
+			if (reply.maxNumberOfItems < wanted) {
+				wanted = reply.maxNumberOfItems;
+				if (wanted <= 0) {
+					return 0;
+				}
+			}
+		}
+		if (!canUseEnergy(wanted * neededEnergy())) {
+			return -1;
+		}
+		ItemStack removed = util.getMultipleItems(item, wanted);
+		if (removed == null || removed.getCount() == 0) {
+			return 0;
+		}
+		int sent = removed.getCount();
+		useEnergy(sent * neededEnergy());
+
+		IRoutedItem routedItem = SimpleServiceLocator.routedItemHelper.createNewTravelItem(removed);
+		routedItem.setDestination(dest.getID());
+		routedItem.setTransportMode(TransportMode.Active);
+		routedItem.setAdditionalTargetInformation(info);
+		super.queueRoutedItem(routedItem, dir != null ? dir : EnumFacing.UP);
+		return sent;
+	}
+	 */
+	private int neededEnergy() {
+		return 20;
 	}
 }

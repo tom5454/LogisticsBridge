@@ -1,13 +1,8 @@
 package com.tom.logisticsbridge;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -16,8 +11,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import net.minecraft.block.Block;
+import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -30,9 +25,9 @@ import net.minecraft.util.ResourceLocation;
 
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.EnumHelper;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.player.PlayerContainerEvent;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.Mod.Instance;
@@ -52,48 +47,25 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.oredict.ShapedOreRecipe;
 import net.minecraftforge.registries.IForgeRegistry;
 
-import com.tom.logisticsbridge.block.BlockBridge;
-import com.tom.logisticsbridge.block.BlockCraftingManager;
+import com.tom.logisticsbridge.block.BlockBridgeRS;
 import com.tom.logisticsbridge.inventory.ContainerCraftingManager;
 import com.tom.logisticsbridge.item.FakeItem;
-import com.tom.logisticsbridge.item.VirtualPattern;
+import com.tom.logisticsbridge.module.BufferUpgrade;
 import com.tom.logisticsbridge.network.RequestIDListPacket;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
-import com.tom.logisticsbridge.part.PartSatelliteBus;
 import com.tom.logisticsbridge.pipe.BridgePipe;
 import com.tom.logisticsbridge.pipe.CraftingManager;
 import com.tom.logisticsbridge.pipe.ResultPipe;
 import com.tom.logisticsbridge.proxy.CommonProxy;
-import com.tom.logisticsbridge.tileentity.TileEntityBridge;
-import com.tom.logisticsbridge.tileentity.TileEntityCraftingManager;
+import com.tom.logisticsbridge.tileentity.TileEntityBridgeRS;
 
-import appeng.api.config.FuzzyMode;
-import appeng.api.definitions.IMaterials;
-import appeng.api.parts.IPart;
-import appeng.api.parts.IPartHost;
-import appeng.api.storage.IStorageChannel;
-import appeng.api.storage.data.IAEItemStack;
-import appeng.api.util.AEPartLocation;
-import appeng.block.AEBaseItemBlock;
-import appeng.core.Api;
-import appeng.core.CreativeTab;
-import appeng.core.features.AEFeature;
-import appeng.core.features.ActivityState;
-import appeng.core.features.BlockStackSrc;
-import appeng.core.features.ItemStackSrc;
-import appeng.integration.IntegrationType;
-import appeng.items.parts.ItemPart;
-import appeng.items.parts.PartType;
-import appeng.tile.AEBaseTile;
-import appeng.util.ItemSorters;
-import appeng.util.prioritylist.MergedPriorityList;
-import io.netty.buffer.ByteBuf;
 import logisticspipes.LPItems;
 import logisticspipes.LogisticsPipes;
 import logisticspipes.blocks.LogisticsProgramCompilerTileEntity;
 import logisticspipes.blocks.LogisticsProgramCompilerTileEntity.ProgrammCategories;
 import logisticspipes.items.ItemLogisticsProgrammer;
+import logisticspipes.items.ItemUpgrade;
 import logisticspipes.pipes.basic.CoreUnroutedPipe;
 import logisticspipes.pipes.basic.LogisticsTileGenericPipe;
 import logisticspipes.recipes.NBTIngredient;
@@ -108,7 +80,7 @@ public class LogisticsBridge {
 	public static final String ID = "logisticsbridge";
 	public static final String NAME = "Logistics Bridge";
 	public static final String VERSION = "1.1.0";
-	public static final String DEPS = "required-after:appliedenergistics2;required-after:logisticspipes@[0.10.2.203,)";
+	public static final String DEPS = "after:appliedenergistics2;after:refinedstorage;required-after:logisticspipes@[0.10.2.203,)";
 	public static final String UPDATE = "https://github.com/tom5454/LogisticsBridge/blob/master/version-check.json";
 	public static final Logger log = LogManager.getLogger(NAME);
 	public static Method registerTexture, registerPipe;
@@ -119,14 +91,11 @@ public class LogisticsBridge {
 	@SidedProxy(clientSide = CLIENT_PROXY_CLASS, serverSide = SERVER_PROXY_CLASS)
 	public static CommonProxy proxy;
 
-	public static Block bridge, craftingManager;
-	public static VirtualPattern virtualPattern;
+	public static Block bridgeAE, bridgeRS;
+	public static Block craftingManager;
 	public static Item logisticsFakeItem;
 	public static Item packageItem;
-	public static HideFakeItem HIDE_FAKE_ITEM;
-	public static Field MergedPriorityList_negative;
-	public static PartType SATELLITE_BUS;
-	public static ItemStackSrc SATELLITE_BUS_SRC;
+	public static boolean aeLoaded, rsLoaded;
 
 	@ObjectHolder("logisticspipes:pipe_lb.bridgepipe")
 	public static Item pipeBridge;
@@ -136,6 +105,9 @@ public class LogisticsBridge {
 
 	@ObjectHolder("logisticspipes:pipe_lb.craftingmanager")
 	public static Item pipeCraftingManager;
+
+	@ObjectHolder("logisticspipes:upgrade_lb.buffer_upgrade")
+	public static Item upgradeBuffer;
 
 	@Instance(ID)
 	public static LogisticsBridge modInstance;
@@ -149,39 +121,32 @@ public class LogisticsBridge {
 	public static void preInit(FMLPreInitializationEvent evt) {
 		log.info("Start Pre Initialization");
 		long tM = System.currentTimeMillis();
-		virtualPattern = new VirtualPattern();
-		logisticsFakeItem = new FakeItem(false).setUnlocalizedName("lb.logisticsFakeItem");
-		packageItem = new FakeItem(true).setUnlocalizedName("lb.package").setCreativeTab(CreativeTab.instance);
+		aeLoaded = Loader.isModLoaded("appliedenergistics2");
+		rsLoaded = Loader.isModLoaded("refinedstorage");
 
-		bridge = new BlockBridge().setUnlocalizedName("lb.bridge").setCreativeTab(CreativeTab.instance);
-		craftingManager = new BlockCraftingManager().setUnlocalizedName("lb.crafting_managerAE").setCreativeTab(CreativeTab.instance);
-		registerBlock(bridge, () -> new AEBaseItemBlock(bridge));
-		registerBlock(craftingManager, () -> new AEBaseItemBlock(craftingManager));
-		registerItem(virtualPattern, true);
+		logisticsFakeItem = new FakeItem(false).setUnlocalizedName("lb.logisticsFakeItem");
+		packageItem = new FakeItem(true).setUnlocalizedName("lb.package").setCreativeTab(CreativeTabs.MISC);
+
+		if(aeLoaded){
+			AE2Plugin.preInit();
+		}
+		if(rsLoaded){
+			bridgeRS = new BlockBridgeRS().setUnlocalizedName("lb.bridge.rs");
+			registerBlock(bridgeRS);
+			GameRegistry.registerTileEntity(TileEntityBridgeRS.class, new ResourceLocation(ID, "bridge_rs"));
+			RSPlugin.init();
+		}
 		registerItem(logisticsFakeItem, true);
 		registerItem(packageItem, true);
-
-		GameRegistry.registerTileEntity(TileEntityBridge.class, new ResourceLocation(ID, "bridge"));
-		AEBaseTile.registerTileItem(TileEntityBridge.class, new BlockStackSrc(bridge, 0, ActivityState.Enabled));
-		GameRegistry.registerTileEntity(TileEntityCraftingManager.class, new ResourceLocation(ID, "craftingManagerAE"));
-		AEBaseTile.registerTileItem(TileEntityCraftingManager.class, new BlockStackSrc(craftingManager, 0, ActivityState.Enabled));
 
 		try {
 			registerTexture = Textures.class.getDeclaredMethod("registerTexture", Object.class, String.class, int.class);
 			registerTexture.setAccessible(true);
 			registerPipe = LogisticsPipes.class.getDeclaredMethod("registerPipe", IForgeRegistry.class, String.class, Function.class);
 			registerPipe.setAccessible(true);
-			MergedPriorityList_negative = MergedPriorityList.class.getDeclaredField("negative");
-			MergedPriorityList_negative.setAccessible(true);
-		} catch (NoSuchMethodException | SecurityException | NoSuchFieldException e) {
+		} catch (NoSuchMethodException | SecurityException e) {
 			throw new RuntimeException(e);
 		}
-
-		SATELLITE_BUS = EnumHelper.addEnum(PartType.class, "SATELLITE_BUS", new Class[]{int.class, String.class, Set.class, Set.class, Class.class},
-				1024, "satellite_bus", EnumSet.of( AEFeature.CRAFTING_CPU ), EnumSet.noneOf( IntegrationType.class ), PartSatelliteBus.class);
-		Api.INSTANCE.getPartModels().registerModels(SATELLITE_BUS.getModels());
-		SATELLITE_BUS_SRC = ItemPart.instance.createPart(SATELLITE_BUS);
-
 		MinecraftForge.EVENT_BUS.register(modInstance);
 		proxy.registerRenderers();
 		long time = System.currentTimeMillis() - tM;
@@ -193,6 +158,7 @@ public class LogisticsBridge {
 		registerPipe(registry, "lb.bridgepipe", BridgePipe::new);
 		registerPipe(registry, "lb.resultpipe", ResultPipe::new);
 		registerPipe(registry, "lb.craftingmanager", CraftingManager::new);
+		ItemUpgrade.registerUpgrade(registry, "lb.buffer_upgrade", BufferUpgrade::new);
 		log.info("Registered Pipes");
 	}
 	@SubscribeEvent
@@ -225,7 +191,6 @@ public class LogisticsBridge {
 		proxy.registerTextures();
 	}
 
-	@SuppressWarnings("unchecked")
 	@EventHandler
 	public static void init(FMLInitializationEvent evt) {
 		log.info("Start Initialization");
@@ -233,31 +198,13 @@ public class LogisticsBridge {
 		if (evt.getSide() == Side.SERVER) {
 			registerTextures(null);
 		}
+		if(aeLoaded){
+			AE2Plugin.patchSorter();
+		}
 		try {
-			Field sorterBySize = ItemSorters.class.getDeclaredField("CONFIG_BASED_SORT_BY_SIZE");
-			sorterBySize.setAccessible(true);
-			Field mod = Field.class.getDeclaredField("modifiers");
-			mod.setAccessible(true);
-			mod.set(sorterBySize, sorterBySize.getModifiers() & ~Modifier.FINAL);
-			Comparator<IAEItemStack> old = (Comparator<IAEItemStack>) sorterBySize.get(null);
-			IAEItemStack s1 = new StackSize().setStackSize(1);
-			IAEItemStack s2 = new StackSize().setStackSize(2);
-			sorterBySize.set(null, new Comparator<IAEItemStack>() {
-
-				@Override
-				public int compare(IAEItemStack o1, IAEItemStack o2) {
-					final int cmp = Long.compare( o2.getStackSize() + o2.getCountRequestable(), o1.getStackSize() + o1.getCountRequestable() );
-					return applyDirection( cmp );
-				}
-
-				private int applyDirection( int cmp ) {
-					int dir = old.compare(s1, s2);
-					return dir*cmp;
-				}
-			});
 			Field pipe = LogisticsTileGenericPipe.class.getDeclaredField("pipe");
 			RequestIDListPacket.pipe = ASMUtil.getfield(pipe);
-		} catch (Exception e) {
+		} catch (NoSuchFieldException | SecurityException e) {
 			e.printStackTrace();
 		}
 		NetworkRegistry.INSTANCE.registerGuiHandler(modInstance, new GuiHandler());
@@ -272,18 +219,21 @@ public class LogisticsBridge {
 		ResourceLocation bridgePrg = pipeBridge.delegate.name();
 		ResourceLocation resultPrg = pipeResult.delegate.name();
 		ResourceLocation craftingMgrPrg = pipeCraftingManager.delegate.name();
+		ResourceLocation bufferUpgr = upgradeBuffer.delegate.name();
 		LogisticsProgramCompilerTileEntity.programByCategory.get(ProgrammCategories.MODDED).add(bridgePrg);
 		LogisticsProgramCompilerTileEntity.programByCategory.get(ProgrammCategories.MODDED).add(resultPrg);
 		LogisticsProgramCompilerTileEntity.programByCategory.get(ProgrammCategories.MODDED).add(craftingMgrPrg);
+		LogisticsProgramCompilerTileEntity.programByCategory.get(ProgrammCategories.MODDED).add(bufferUpgr);
 		ResourceLocation group = new ResourceLocation(ID, "recipes");
-		IMaterials mat = AE2Plugin.INSTANCE.api.definitions().materials();
-		ForgeRegistries.RECIPES.register(new ShapedOreRecipe(group, new ItemStack(bridge), "iei", "bIb", "ici",
-				'i', "ingotIron",
-				'b', LPItems.pipeBasic,
-				'I', AE2Plugin.INSTANCE.api.definitions().blocks().iface().maybeStack(1).orElse(ItemStack.EMPTY),
-				'c', mat.calcProcessor().maybeStack(1).orElse(ItemStack.EMPTY),
-				'e', mat.engProcessor().maybeStack(1).orElse(ItemStack.EMPTY)).
-				setRegistryName(new ResourceLocation(ID, "recipes/bridge")));
+
+		if(aeLoaded){
+			AE2Plugin.loadRecipes(group);
+		}
+
+		if(rsLoaded){
+			RSPlugin.loadRecipes(group);
+		}
+
 		ForgeRegistries.RECIPES.register(new ShapedOreRecipe(group, new ItemStack(pipeBridge), " p ", "fbf", "dad",
 				'p', getIngredientForProgrammer(bridgePrg),
 				'b', LPItems.pipeBasic,
@@ -304,23 +254,18 @@ public class LogisticsBridge {
 				'r', "ingotGold",
 				'c', "chest").
 				setRegistryName(new ResourceLocation(ID, "recipes/crafting_manager")));
-		ForgeRegistries.RECIPES.register(new ShapedOreRecipe(group, SATELLITE_BUS_SRC.stack(1), " c ", "ifi", " p ",
-				'p', Blocks.PISTON,
-				'f', mat.formationCore().maybeStack(1).orElse(ItemStack.EMPTY),
-				'i', "ingotIron",
-				'c', mat.calcProcessor().maybeStack(1).orElse(ItemStack.EMPTY)).
-				setRegistryName(new ResourceLocation(ID, "recipes/satellite_bus")));
-		ForgeRegistries.RECIPES.register(new ShapedOreRecipe(group, new ItemStack(craftingManager), "IlI", "cec", "ili",
-				'I', AE2Plugin.INSTANCE.api.definitions().blocks().iface().maybeStack(1).orElse(ItemStack.EMPTY),
-				'l', mat.logicProcessor().maybeStack(1).orElse(ItemStack.EMPTY),
-				'i', "ingotIron",
-				'e', mat.engProcessor().maybeStack(1).orElse(ItemStack.EMPTY),
-				'c', mat.calcProcessor().maybeStack(1).orElse(ItemStack.EMPTY)).
-				setRegistryName(new ResourceLocation(ID, "recipes/crafting_manager_ae")));
 		ForgeRegistries.RECIPES.register(new ShapedOreRecipe(group, new ItemStack(packageItem), "pw",
 				'p', Items.PAPER,
 				'w', "plankWood").
 				setRegistryName(new ResourceLocation(ID, "recipes/package")));
+		ForgeRegistries.RECIPES.register(new ShapedOreRecipe(group, new ItemStack(upgradeBuffer), "rpr", "ici", "PnP",
+				'p', getIngredientForProgrammer(bufferUpgr),
+				'n', LPItems.chipAdvanced,
+				'c', LPItems.chipFPGA,
+				'r', "dustRedstone",
+				'i', "gemDiamond",
+				'P', "paper").
+				setRegistryName(new ResourceLocation(ID, "recipes/buffer_upgrade")));
 		long time = System.currentTimeMillis() - tM;
 		log.info("Post Initialization took in " + time + " milliseconds");
 	}
@@ -359,156 +304,9 @@ public class LogisticsBridge {
 		registerItem(itemBlock.get(), true);
 	}
 	public static void registerOnlyBlock(Block block){
-		block.setRegistryName(block.getUnlocalizedName().substring(5));
+		if(block.getRegistryName() == null)
+			block.setRegistryName(block.getUnlocalizedName().substring(5));
 		ForgeRegistries.BLOCKS.register(block);
-	}
-	private static class StackSize implements IAEItemStack {
-		private long stackSize;
-		@Override
-		public long getStackSize() {
-			return stackSize;
-		}
-
-		@Override
-		public IAEItemStack setStackSize(long stackSize) {
-			this.stackSize = stackSize;
-			return this;
-		}
-
-		@Override
-		public long getCountRequestable() {
-			return 0;
-		}
-
-		@Override
-		public IAEItemStack setCountRequestable(long countRequestable) {
-			return this;
-		}
-
-		@Override
-		public boolean isCraftable() {
-			return false;
-		}
-
-		@Override
-		public IAEItemStack setCraftable(boolean isCraftable) {
-			return this;
-		}
-
-		@Override
-		public IAEItemStack reset() {
-			return this;
-		}
-
-		@Override
-		public boolean isMeaningful() {
-			return false;
-		}
-
-		@Override
-		public void incStackSize(long i) {
-			stackSize += i;
-		}
-
-		@Override
-		public void decStackSize(long i) {
-			stackSize -= i;
-		}
-
-		@Override
-		public void incCountRequestable(long i) {
-		}
-
-		@Override
-		public void decCountRequestable(long i) {
-		}
-
-		@Override
-		public void writeToNBT(NBTTagCompound i) {
-		}
-
-		@Override
-		public boolean fuzzyComparison(IAEItemStack other, FuzzyMode mode) {
-			return false;
-		}
-
-		@Override
-		public void writeToPacket(ByteBuf data) throws IOException {
-		}
-
-		@Override
-		public IAEItemStack empty() {
-			return this;
-		}
-
-		@Override
-		public boolean isItem() {
-			return false;
-		}
-
-		@Override
-		public boolean isFluid() {
-			return false;
-		}
-
-		@Override
-		public IStorageChannel<IAEItemStack> getChannel() {
-			return null;
-		}
-
-		@Override
-		public ItemStack asItemStackRepresentation() {
-			return ItemStack.EMPTY;
-		}
-
-		@Override
-		public ItemStack createItemStack() {
-			return ItemStack.EMPTY;
-		}
-
-		@Override
-		public boolean hasTagCompound() {
-			return false;
-		}
-
-		@Override
-		public void add(IAEItemStack option) {
-		}
-
-		@Override
-		public IAEItemStack copy() {
-			return new StackSize().setStackSize(stackSize);
-		}
-
-		@Override
-		public Item getItem() {
-			return Items.AIR;
-		}
-
-		@Override
-		public int getItemDamage() {
-			return 0;
-		}
-
-		@Override
-		public boolean sameOre(IAEItemStack is) {
-			return false;
-		}
-
-		@Override
-		public boolean isSameType(IAEItemStack otherStack) {
-			return false;
-		}
-
-		@Override
-		public boolean isSameType(ItemStack stored) {
-			return false;
-		}
-
-		@Override
-		public ItemStack getDefinition() {
-			return ItemStack.EMPTY;
-		}
 	}
 	public static ItemStack fakeStack(ItemStack stack, int count){
 		ItemStack is = new ItemStack(logisticsFakeItem, count);
@@ -556,24 +354,14 @@ public class LogisticsBridge {
 			if(player.openContainer instanceof Consumer){
 				((Consumer<String>)player.openContainer).accept(pck.pid);
 			}
-		}else{
-			AEPartLocation side = AEPartLocation.fromOrdinal(pck.side - 1);
-			IPartHost ph = pck.getTile(player.world, IPartHost.class);
-			if(ph == null)return;
-			IPart p = ph.getPart(side);
-			if(p instanceof IIdPipe){
-				((IIdPipe) p).setPipeID(pck.id, pck.pid, player);
-			}
+		}else if(aeLoaded){
+			AE2Plugin.processResIDMod(player, pck);
 		}
 	}
 
 	public static IIdPipe processReqIDList(EntityPlayer player, RequestIDListPacket pck) {
-		AEPartLocation side = AEPartLocation.fromOrdinal(pck.side - 1);
-		IPartHost ph = pck.getTile(player.world, IPartHost.class);
-		if(ph == null)return null;
-		IPart p = ph.getPart(side);
-		if(p instanceof IIdPipe){
-			return (IIdPipe) p;
+		if(aeLoaded){
+			return AE2Plugin.processReqIDList(player, pck);
 		}
 		return null;
 	}

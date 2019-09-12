@@ -1,0 +1,8 @@
+{
+    "parent": "block/cube_bottom_top",
+    "textures": {
+        "side": "refinedstorage:blocks/interface_connected",
+        "top": "logisticsbridge:blocks/bridge_top",
+        "bottom": "refinedstorage:blocks/bottom"
+    }
+}

@@ -1,3 +1,6 @@
 {
-    "parent": "appliedenergistics2:item/encoded_pattern"
+	"parent": "item/generated",
+	"textures": {
+		"layer0": "logisticsbridge:items/pattern"
+	}
 }

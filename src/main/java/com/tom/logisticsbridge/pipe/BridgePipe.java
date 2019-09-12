@@ -15,7 +15,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 
 import com.tom.logisticsbridge.api.BridgeStack;
-import com.tom.logisticsbridge.tileentity.TileEntityBridge;
+import com.tom.logisticsbridge.tileentity.IBridge;
 
 import logisticspipes.interfaces.IChangeListener;
 import logisticspipes.interfaces.routing.IAdditionalTargetInformation;
@@ -59,7 +59,7 @@ import network.rs485.logisticspipes.world.WorldCoordinatesWrapper;
 public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IRequestItems, IChangeListener, ICraftItems, IRequireReliableTransport {
 	public static TextureType TEXTURE = Textures.empty;
 	//protected LogisticsItemOrderManager _orderManager = new LogisticsItemOrderManager(this, this);
-	private TileEntityBridge bridge;
+	private IBridge bridge;
 	private EnumFacing dir;
 	private Req reqapi = new Req();
 	public BridgePipe(Item item) {
@@ -157,15 +157,15 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 			NeighborTileEntity<TileEntity> ate = null;
 			for(EnumFacing f : EnumFacing.HORIZONTALS){
 				NeighborTileEntity<TileEntity> n = w.getNeighbor(f);
-				if(n != null && n.getTileEntity() instanceof TileEntityBridge)ate = n;
+				if(n != null && n.getTileEntity() instanceof IBridge)ate = n;
 			}
 			if(ate == null){
 				dir = null;
 				bridge = null;
 			}else{
 				dir = ate.getDirection();
-				bridge = (TileEntityBridge) ate.getTileEntity();
-				bridge.reqapi = reqapi;
+				bridge = (IBridge) ate.getTileEntity();
+				bridge.setReqAPI(reqapi);
 			}
 		}
 
@@ -356,7 +356,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 
 	@Override
 	public boolean logisitcsIsPipeConnected(TileEntity tile, EnumFacing dir) {
-		return tile instanceof TileEntityBridge;
+		return tile instanceof IBridge;
 	}
 
 	@Override

@@ -14,6 +14,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 
+import com.tom.logisticsbridge.AE2Plugin;
 import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.inventory.ContainerCraftingManagerAE;
 import com.tom.logisticsbridge.tileentity.TileEntityCraftingManager;
@@ -57,7 +58,7 @@ public class GuiCraftingManagerAE extends LogisticsBaseGuiScreen {
 	public void initGui() {
 		super.initGui();//120 155
 		extentionControllerLeft.clear();
-		ConfigExtention ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.satellite"), LogisticsBridge.SATELLITE_BUS_SRC.stack(1), 0);
+		ConfigExtention ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.satellite"), AE2Plugin.SATELLITE_BUS_SRC.stack(1), 0);
 		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 45, guiTop + 25, 40, 10, StringUtils.translate("gui.crafting.Select")))));
 		extentionControllerLeft.addExtention(ce);
 	}
