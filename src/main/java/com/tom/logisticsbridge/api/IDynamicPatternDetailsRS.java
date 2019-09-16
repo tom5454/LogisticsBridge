@@ -8,25 +8,24 @@ import java.util.function.Function;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import net.minecraftforge.fml.common.FMLCommonHandler;
 
-import appeng.api.storage.data.IAEItemStack;
-
-public interface IDynamicPatternDetails {
-	public static Map<String, Function<NBTTagCompound, IDynamicPatternDetails>> FACTORIES = new HashMap<>();
-	public static WeakHashMap<NBTTagCompound, IDynamicPatternDetails> CACHE = new WeakHashMap<>();
+public interface IDynamicPatternDetailsRS {
+	public static Map<String, Function<NBTTagCompound, IDynamicPatternDetailsRS>> FACTORIES = new HashMap<>();
+	public static WeakHashMap<NBTTagCompound, IDynamicPatternDetailsRS> CACHE = new WeakHashMap<>();
 	public static final String ID_TAG = "_id";
-	public static IDynamicPatternDetails load(NBTTagCompound tag){
+	public static IDynamicPatternDetailsRS load(NBTTagCompound tag){
 		return CACHE.computeIfAbsent(tag, t -> {
 			String id = t.getString(ID_TAG);
-			Function<NBTTagCompound, IDynamicPatternDetails> fac = FACTORIES.get(id);
+			Function<NBTTagCompound, IDynamicPatternDetailsRS> fac = FACTORIES.get(id);
 			return fac.apply(t);
 		});
 	}
-	public static NBTTagCompound save(IDynamicPatternDetails det){
+	public static NBTTagCompound save(IDynamicPatternDetailsRS det){
 		String id = det.getId();
 		NBTTagCompound tag = new NBTTagCompound();
 		det.storeToNBT(tag);
@@ -39,20 +38,24 @@ public interface IDynamicPatternDetails {
 	default void storeToNBT(NBTTagCompound tag){
 		throw new AbstractMethodError("Missing impl: " + getClass());
 	}
-	IAEItemStack[] getInputs(ItemStack res, IAEItemStack[] def, boolean condensed);
-	public class TileEntityWrapper implements IDynamicPatternDetails {
+	NonNullList<ItemStack> getInputs(ItemStack res, NonNullList<ItemStack> def);
+	public class TileEntityWrapper implements IDynamicPatternDetailsRS {
 		private int dim;
 		private BlockPos pos;
-		private IDynamicPatternDetails tile;
+		private IDynamicPatternDetailsRS tile;
 
 		public TileEntityWrapper(int dim, BlockPos pos) {
 			this.dim = dim;
 			this.pos = pos;
 		}
 
+		public TileEntityWrapper(World world, BlockPos pos) {
+			this(world.provider.getDimension(), pos);
+		}
+
 		public TileEntityWrapper(TileEntity te) {
-			this(te.getWorld().provider.getDimension(), te.getPos());
-			tile = (IDynamicPatternDetails) te;
+			this(te.getWorld(), te.getPos());
+			tile = (IDynamicPatternDetailsRS) te;
 		}
 
 		@Override
@@ -75,15 +78,15 @@ public interface IDynamicPatternDetails {
 				World w = FMLCommonHandler.instance().getMinecraftServerInstance().getWorld(dim);
 				if(w != null){
 					TileEntity te = w.getTileEntity(pos);
-					if(te instanceof IDynamicPatternDetails)this.tile = (IDynamicPatternDetails) te;
+					if(te instanceof IDynamicPatternDetailsRS)this.tile = (IDynamicPatternDetailsRS) te;
 				}
 			}
 		}
 
 		@Override
-		public IAEItemStack[] getInputs(ItemStack res, IAEItemStack[] def, boolean condensed) {
+		public NonNullList<ItemStack> getInputs(ItemStack res, NonNullList<ItemStack> def) {
 			load();
-			return tile != null ? tile.getInputs(res, def, condensed) : def;
+			return tile != null ? tile.getInputs(res, def) : def;
 		}
 
 	}

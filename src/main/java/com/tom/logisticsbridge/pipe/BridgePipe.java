@@ -87,7 +87,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		/*System.out.println("BridgePipe.canProvide()");
 		System.out.println(tree);
 		System.out.println(root);*/
-		if (!isEnabled()) {
+		if (!isEnabled() || canCraft(tree.getRequestType())) {
 			return;
 		}
 		if (tree.getRequestType() instanceof ItemResource) {
@@ -256,6 +256,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 			else _orderItemManager.deferSend();
 			return 0;
 		}
+		//System.out.println(removed + " " + wanted);
 		int sent = removed.getCount();
 		useEnergy(sent * neededEnergy());
 
@@ -379,9 +380,10 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 
 	@Override
 	public boolean canCraft(IResource toCraft) {
-		/*System.out.println("BridgePipe.canCraft()");
-		System.out.println(toCraft);*/
-		return false;
+		if(!isEnabled())return false;
+		ItemStack item = toCraft.getAsItem().makeNormalStack(1);
+		List<ItemStack> cr = reqapi.getCraftedItems();
+		return bridge.getItems().stream().anyMatch(b -> b.craftable && item.isItemEqual(b.obj) && !cr.stream().anyMatch(i -> item.isItemEqual(i)));
 	}
 
 	@Override

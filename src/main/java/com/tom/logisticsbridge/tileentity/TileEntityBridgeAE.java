@@ -16,7 +16,6 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.InventoryCrafting;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -36,8 +35,8 @@ import com.google.common.collect.ImmutableSet;
 import com.tom.logisticsbridge.AE2Plugin;
 import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.api.BridgeStack;
-import com.tom.logisticsbridge.api.IDynamicPatternDetails;
-import com.tom.logisticsbridge.item.VirtualPattern;
+import com.tom.logisticsbridge.api.IDynamicPatternDetailsAE;
+import com.tom.logisticsbridge.item.VirtualPatternAE;
 import com.tom.logisticsbridge.pipe.BridgePipe.OpResult;
 import com.tom.logisticsbridge.pipe.BridgePipe.Req;
 import com.tom.logisticsbridge.util.DynamicInventory;
@@ -79,7 +78,7 @@ import appeng.util.inv.InvOperation;
 
 public class TileEntityBridgeAE extends AENetworkInvTile implements IGridHost, ITickable, IActionSource,
 ICraftingRequester, ICellContainer, ICraftingProvider, ICraftingCallback, IMEInventoryHandler<IAEItemStack>,
-IItemHandlerModifiable, IDynamicPatternDetails, IBridge {
+IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	private Optional<IActionHost> machine = Optional.of(this);
 	private Set<ICraftingLink> links = new HashSet<>();
 	private Set<ICraftingPatternDetails> craftings = new HashSet<>();
@@ -125,7 +124,7 @@ IItemHandlerModifiable, IDynamicPatternDetails, IBridge {
 			try {
 				ICraftingGrid cg = this.getProxy().getGrid().getCache(ICraftingGrid.class);
 				if(cg.isRequesting(FAKE_ITEM)){
-					insertItem(0, LogisticsBridge.fakeStack(null, 1), false);
+					insertItem(0, LogisticsBridge.fakeStack(1), false);
 				}
 			} catch (GridAccessException e) {
 			}
@@ -290,7 +289,7 @@ IItemHandlerModifiable, IDynamicPatternDetails, IBridge {
 			return t;
 		}).forEach(lst2::appendTag);
 		dynInv.removeEmpties();
-		compound.setTag("intInventory", saveAllItems(dynInv));
+		compound.setTag("intInventory", LogisticsBridge.saveAllItems(dynInv));
 		return super.writeToNBT(compound);
 	}
 	boolean readingFromNBT;
@@ -302,7 +301,7 @@ IItemHandlerModifiable, IDynamicPatternDetails, IBridge {
 		} finally {
 			readingFromNBT = false;
 		}
-		loadAllItems(compound.getTagList("intInventory", 10), dynInv);
+		LogisticsBridge.loadAllItems(compound.getTagList("intInventory", 10), dynInv);
 		NBTTagList lst = compound.getTagList("links", 10);
 		toCraft.clear();
 		links.clear();
@@ -366,9 +365,9 @@ IItemHandlerModifiable, IDynamicPatternDetails, IBridge {
 				ItemStack r = i.copy();
 				r.setCount(1);
 				fakeItems.add(ITEMS.createStack(LogisticsBridge.fakeStack(r, i.getCount())));
-				return VirtualPattern.create(r, wr);
+				return VirtualPatternAE.create(r, wr);
 			}).forEach(craftings::add);
-			ci.stream().map(i -> VirtualPattern.create(i, wr)).forEach(craftings::add);
+			ci.stream().map(i -> VirtualPatternAE.create(i, wr)).forEach(craftings::add);
 			fakeItems.forEach(out::addStorage);
 		} catch(Exception e){
 			e.printStackTrace();
@@ -459,8 +458,9 @@ IItemHandlerModifiable, IDynamicPatternDetails, IBridge {
 		if(pushed){
 			lastInjectTime = world.getTotalWorldTime();
 			for(int i = 0;i<table.getSizeInventory();i++){
-				if(table.getStackInSlot(i).getItem() != LogisticsBridge.logisticsFakeItem)
-					dynInv.insert(table.removeStackFromSlot(i));
+				ItemStack stack = table.getStackInSlot(i);
+				if(stack.getItem() != LogisticsBridge.logisticsFakeItem)
+					dynInv.insert(stack.copy());
 			}
 		}else{
 			lastPush = new WeakReference<>(opres);
@@ -504,32 +504,6 @@ IItemHandlerModifiable, IDynamicPatternDetails, IBridge {
 
 	@Override
 	public void onChangeInventory(IItemHandler inv, int slot, InvOperation mc, ItemStack removed, ItemStack added) {
-	}
-	public static NBTTagList saveAllItems(IInventory inv) {
-		NBTTagList nbttaglist = new NBTTagList();
-		for (int i = 0;i < inv.getSizeInventory();++i) {
-			ItemStack itemstack = inv.getStackInSlot(i);
-
-			if (!itemstack.isEmpty()) {
-				NBTTagCompound nbttagcompound = new NBTTagCompound();
-				nbttagcompound.setByte("Slot", (byte) i);
-				itemstack.writeToNBT(nbttagcompound);
-				nbttaglist.appendTag(nbttagcompound);
-			}
-		}
-		return nbttaglist;
-	}
-	public static void loadAllItems(NBTTagList nbttaglist, IInventory inv) {
-		inv.clear();
-		int invSize = inv instanceof DynamicInventory ? Integer.MAX_VALUE : inv.getSizeInventory();
-		for (int i = 0;i < nbttaglist.tagCount();++i) {
-			NBTTagCompound nbttagcompound = nbttaglist.getCompoundTagAt(i);
-			int j = nbttagcompound.getByte("Slot") & 255;
-
-			if (j >= 0 && j < invSize) {
-				inv.setInventorySlotContents(j, new ItemStack(nbttagcompound));
-			}
-		}
 	}
 
 	public String infoString() {

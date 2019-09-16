@@ -2,7 +2,6 @@ package com.tom.logisticsbridge.proxy;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -20,10 +19,9 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import com.tom.logisticsbridge.AE2Plugin;
-import com.tom.logisticsbridge.HideFakeItem;
 import com.tom.logisticsbridge.LogisticsBridge;
+import com.tom.logisticsbridge.RSPlugin;
 
-import appeng.api.storage.data.IAEItemStack;
 import appeng.bootstrap.FeatureFactory;
 import appeng.bootstrap.IBootstrapComponent;
 import appeng.bootstrap.components.IModelRegistrationComponent;
@@ -32,12 +30,11 @@ import appeng.client.gui.implementations.GuiMEMonitorable;
 import appeng.client.me.ItemRepo;
 import appeng.core.Api;
 import appeng.items.parts.ItemPart;
-import appeng.util.prioritylist.IPartitionList;
-import appeng.util.prioritylist.MergedPriorityList;
 
 public class ClientProxy extends CommonProxy {
 	private List<Item> renderers = new ArrayList<>();
 	public static Field GuiMEMonitorable_Repo, ItemRepo_myPartitionList;
+	//public static Field
 	@SuppressWarnings("unchecked")
 	@Override
 	public void registerRenderers() {
@@ -104,42 +101,19 @@ public class ClientProxy extends CommonProxy {
 		}
 		MinecraftForge.EVENT_BUS.register(this);
 	}
-	@SuppressWarnings("unchecked")
 	@SubscribeEvent
 	public void onDrawBackgroundEventPost(GuiScreenEvent.BackgroundDrawnEvent event) {
-		Minecraft mc = Minecraft.getMinecraft();
-		if(LogisticsBridge.aeLoaded && mc.currentScreen instanceof GuiMEMonitorable){
-			GuiMEMonitorable g = (GuiMEMonitorable) mc.currentScreen;
-			if (AE2Plugin.HIDE_FAKE_ITEM == null) {
-				AE2Plugin.HIDE_FAKE_ITEM = new HideFakeItem();
-			}
-			try {
-				ItemRepo r = (ItemRepo) GuiMEMonitorable_Repo.get(g);
-				IPartitionList<IAEItemStack> pl = (IPartitionList<IAEItemStack>) ItemRepo_myPartitionList.get(r);
-				if(pl instanceof MergedPriorityList){
-					MergedPriorityList<IAEItemStack> ml = (MergedPriorityList<IAEItemStack>) pl;
-					Collection<IPartitionList<IAEItemStack>> negative = (Collection<IPartitionList<IAEItemStack>>) AE2Plugin.MergedPriorityList_negative.get(ml);
-					if(!negative.contains(AE2Plugin.HIDE_FAKE_ITEM)){
-						negative.add(AE2Plugin.HIDE_FAKE_ITEM);
-						r.updateView();
-					}
-				}else{
-					MergedPriorityList<IAEItemStack> mlist = new MergedPriorityList<>();
-					ItemRepo_myPartitionList.set(r, mlist);
-					if(pl != null)mlist.addNewList(pl, true);
-					mlist.addNewList(AE2Plugin.HIDE_FAKE_ITEM, false);
-					r.updateView();
-				}
-			} catch (Exception e) {
-			}
+		if(LogisticsBridge.aeLoaded){
+			AE2Plugin.hideFakeItems(event);
+		}
+		if(LogisticsBridge.rsLoaded){
+			RSPlugin.hideFakeItems(event);
 		}
 	}
 	@SubscribeEvent
 	public void loadModels(ModelRegistryEvent ev){
-		Minecraft mc = Minecraft.getMinecraft();
 		if(LogisticsBridge.aeLoaded){
-			mc.getRenderItem().getItemModelMesher().register(ItemPart.instance, 1024, AE2Plugin.SATELLITE_BUS.getItemModels().get(0));
-			ModelLoader.setCustomModelResourceLocation(ItemPart.instance, 1024, AE2Plugin.SATELLITE_BUS.getItemModels().get(0));
+			AE2Plugin.loadModels();
 		}
 	}
 }

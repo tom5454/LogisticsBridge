@@ -137,4 +137,8 @@ public class DynamicInventory implements IInventory {
 	public Stream<ItemStack> stream() {
 		return stacks.stream().filter(s -> !s.isEmpty());
 	}
+
+	public void addStack(ItemStack is) {
+		stacks.add(is.copy());
+	}
 }

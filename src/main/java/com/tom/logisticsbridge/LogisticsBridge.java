@@ -3,9 +3,12 @@ package com.tom.logisticsbridge;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,14 +43,12 @@ import net.minecraftforge.fml.common.event.FMLServerStoppingEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
-import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.common.registry.GameRegistry.ObjectHolder;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.oredict.ShapedOreRecipe;
 import net.minecraftforge.registries.IForgeRegistry;
 
-import com.tom.logisticsbridge.block.BlockBridgeRS;
 import com.tom.logisticsbridge.inventory.ContainerCraftingManager;
 import com.tom.logisticsbridge.item.FakeItem;
 import com.tom.logisticsbridge.module.BufferUpgrade;
@@ -58,7 +59,7 @@ import com.tom.logisticsbridge.pipe.BridgePipe;
 import com.tom.logisticsbridge.pipe.CraftingManager;
 import com.tom.logisticsbridge.pipe.ResultPipe;
 import com.tom.logisticsbridge.proxy.CommonProxy;
-import com.tom.logisticsbridge.tileentity.TileEntityBridgeRS;
+import com.tom.logisticsbridge.util.DynamicInventory;
 
 import logisticspipes.LPItems;
 import logisticspipes.LogisticsPipes;
@@ -79,8 +80,8 @@ dependencies = LogisticsBridge.DEPS, updateJSON = LogisticsBridge.UPDATE)
 public class LogisticsBridge {
 	public static final String ID = "logisticsbridge";
 	public static final String NAME = "Logistics Bridge";
-	public static final String VERSION = "1.1.0";
-	public static final String DEPS = "after:appliedenergistics2;after:refinedstorage;required-after:logisticspipes@[0.10.2.203,)";
+	public static final String VERSION = "1.2.1";
+	public static final String DEPS = "after:appliedenergistics2;after:refinedstorage@[1.6.15,);required-after:logisticspipes@[0.10.2.203,)";
 	public static final String UPDATE = "https://github.com/tom5454/LogisticsBridge/blob/master/version-check.json";
 	public static final Logger log = LogManager.getLogger(NAME);
 	public static Method registerTexture, registerPipe;
@@ -131,10 +132,7 @@ public class LogisticsBridge {
 			AE2Plugin.preInit();
 		}
 		if(rsLoaded){
-			bridgeRS = new BlockBridgeRS().setUnlocalizedName("lb.bridge.rs");
-			registerBlock(bridgeRS);
-			GameRegistry.registerTileEntity(TileEntityBridgeRS.class, new ResourceLocation(ID, "bridge_rs"));
-			RSPlugin.init();
+			RSPlugin.preInit();
 		}
 		registerItem(logisticsFakeItem, true);
 		registerItem(packageItem, true);
@@ -308,9 +306,17 @@ public class LogisticsBridge {
 			block.setRegistryName(block.getUnlocalizedName().substring(5));
 		ForgeRegistries.BLOCKS.register(block);
 	}
+	public static ItemStack fakeStack(int count){
+		return new ItemStack(logisticsFakeItem, count);
+	}
 	public static ItemStack fakeStack(ItemStack stack, int count){
 		ItemStack is = new ItemStack(logisticsFakeItem, count);
 		if(stack != null && !stack.isEmpty())is.setTagCompound(stack.writeToNBT(new NBTTagCompound()));
+		return is;
+	}
+	public static ItemStack fakeStack(NBTTagCompound stack, int count){
+		ItemStack is = new ItemStack(logisticsFakeItem, count);
+		if(stack != null && !stack.hasNoTags())is.setTagCompound(stack);
 		return is;
 	}
 	public static ItemStack packageStack(ItemStack stack, int count, String id, boolean actStack){
@@ -338,7 +344,7 @@ public class LogisticsBridge {
 
 	public static void loadAllItems(NBTTagList nbttaglist, IInventory inv) {
 		inv.clear();
-		int invSize = inv.getSizeInventory();
+		int invSize = inv instanceof DynamicInventory ? Integer.MAX_VALUE : inv.getSizeInventory();
 		for (int i = 0;i < nbttaglist.tagCount();++i) {
 			NBTTagCompound nbttagcompound = nbttaglist.getCompoundTagAt(i);
 			int j = nbttagcompound.getByte("Slot") & 255;
@@ -364,5 +370,10 @@ public class LogisticsBridge {
 			return AE2Plugin.processReqIDList(player, pck);
 		}
 		return null;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> Stream<T> concatStreams(Stream<T>... streams){
+		return Arrays.stream(streams).flatMap(UnaryOperator.identity());
 	}
 }

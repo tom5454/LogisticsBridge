@@ -22,6 +22,7 @@ item.logisticspipes.upgrade_lb.buffer_upgrade.tip1=Uses attached chest to buffer
 item.lb.logisticsFakeItem.name=Logistics Craft Token
 item.lb.package.name=Empty Package
 item.lb.virtPattern.name=Virtual Encoded Pattern
+item.lb.virtPatternRS.name=Virtual Pattern
 item.appliedenergistics2.multi_part.satellite_bus.name=Satellite Bus
 
 tile.lb.bridge.name=AE Bridge

@@ -21,8 +21,8 @@ import net.minecraftforge.items.wrapper.InvWrapper;
 import com.tom.logisticsbridge.AE2Plugin;
 import com.tom.logisticsbridge.GuiHandler.GuiIDs;
 import com.tom.logisticsbridge.LogisticsBridge;
-import com.tom.logisticsbridge.item.VirtualPattern;
-import com.tom.logisticsbridge.item.VirtualPattern.VirtualPatternHandler;
+import com.tom.logisticsbridge.item.VirtualPatternAE;
+import com.tom.logisticsbridge.item.VirtualPatternAE.VirtualPatternHandler;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
 import com.tom.logisticsbridge.part.PartSatelliteBus;
@@ -229,7 +229,7 @@ public class TileEntityCraftingManager extends AENetworkInvTile implements ITick
 				List<ItemStack> pkgs = new ArrayList<>();
 				visitArray(cin, pkgs, false);
 				visitArray(in, pkgs, false);
-				pkgs.stream().map(p -> VirtualPattern.create(new ItemStack(p.getTagCompound()), p)).forEach(craftingList::add);
+				pkgs.stream().map(p -> VirtualPatternAE.create(new ItemStack(p.getTagCompound()), p)).forEach(craftingList::add);
 
 				this.craftingList.add( details );
 			}

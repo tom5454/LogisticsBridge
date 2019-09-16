@@ -3,11 +3,13 @@ package com.tom.logisticsbridge;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.Set;
 
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -16,18 +18,23 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 
+import net.minecraftforge.client.event.GuiScreenEvent;
+import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.common.util.EnumHelper;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.oredict.ShapedOreRecipe;
 
 import com.tom.logisticsbridge.block.BlockBridgeAE;
 import com.tom.logisticsbridge.block.BlockCraftingManager;
-import com.tom.logisticsbridge.item.VirtualPattern;
+import com.tom.logisticsbridge.item.VirtualPatternAE;
 import com.tom.logisticsbridge.network.RequestIDListPacket;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
 import com.tom.logisticsbridge.part.PartSatelliteBus;
+import com.tom.logisticsbridge.proxy.ClientProxy;
 import com.tom.logisticsbridge.tileentity.TileEntityBridgeAE;
 import com.tom.logisticsbridge.tileentity.TileEntityCraftingManager;
 
@@ -41,6 +48,8 @@ import appeng.api.storage.IStorageChannel;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.util.AEPartLocation;
 import appeng.block.AEBaseItemBlock;
+import appeng.client.gui.implementations.GuiMEMonitorable;
+import appeng.client.me.ItemRepo;
 import appeng.core.Api;
 import appeng.core.CreativeTab;
 import appeng.core.features.AEFeature;
@@ -52,6 +61,7 @@ import appeng.items.parts.ItemPart;
 import appeng.items.parts.PartType;
 import appeng.tile.AEBaseTile;
 import appeng.util.ItemSorters;
+import appeng.util.prioritylist.IPartitionList;
 import appeng.util.prioritylist.MergedPriorityList;
 import io.netty.buffer.ByteBuf;
 import logisticspipes.LPItems;
@@ -208,7 +218,7 @@ public class AE2Plugin {
 	}
 	public static AE2Plugin INSTANCE;
 	public final IAppEngApi api;
-	public static VirtualPattern virtualPattern;
+	public static VirtualPatternAE virtualPattern;
 	public static HideFakeItem HIDE_FAKE_ITEM;
 	public static Field MergedPriorityList_negative;
 	public static PartType SATELLITE_BUS;
@@ -222,7 +232,7 @@ public class AE2Plugin {
 		LogisticsBridge.registerBlock(block, () -> new AEBaseItemBlock(block));
 	}
 	public static void preInit(){
-		virtualPattern = new VirtualPattern();
+		virtualPattern = new VirtualPatternAE();
 		LogisticsBridge.bridgeAE = new BlockBridgeAE().setUnlocalizedName("lb.bridge");
 		LogisticsBridge.craftingManager = new BlockCraftingManager().setUnlocalizedName("lb.crafting_managerAE");
 		AE2Plugin.registerBlock(LogisticsBridge.bridgeAE);
@@ -315,5 +325,43 @@ public class AE2Plugin {
 		if(p instanceof IIdPipe){
 			((IIdPipe) p).setPipeID(pck.id, pck.pid, player);
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@SideOnly(Side.CLIENT)
+	public static void hideFakeItems(GuiScreenEvent.BackgroundDrawnEvent event){
+		Minecraft mc = Minecraft.getMinecraft();
+		if(mc.currentScreen instanceof GuiMEMonitorable){
+			GuiMEMonitorable g = (GuiMEMonitorable) mc.currentScreen;
+			if (AE2Plugin.HIDE_FAKE_ITEM == null) {
+				AE2Plugin.HIDE_FAKE_ITEM = new HideFakeItem();
+			}
+			try {
+				ItemRepo r = (ItemRepo) ClientProxy.GuiMEMonitorable_Repo.get(g);
+				IPartitionList<IAEItemStack> pl = (IPartitionList<IAEItemStack>) ClientProxy.ItemRepo_myPartitionList.get(r);
+				if(pl instanceof MergedPriorityList){
+					MergedPriorityList<IAEItemStack> ml = (MergedPriorityList<IAEItemStack>) pl;
+					Collection<IPartitionList<IAEItemStack>> negative = (Collection<IPartitionList<IAEItemStack>>) AE2Plugin.MergedPriorityList_negative.get(ml);
+					if(!negative.contains(AE2Plugin.HIDE_FAKE_ITEM)){
+						negative.add(AE2Plugin.HIDE_FAKE_ITEM);
+						r.updateView();
+					}
+				}else{
+					MergedPriorityList<IAEItemStack> mlist = new MergedPriorityList<>();
+					ClientProxy.ItemRepo_myPartitionList.set(r, mlist);
+					if(pl != null)mlist.addNewList(pl, true);
+					mlist.addNewList(AE2Plugin.HIDE_FAKE_ITEM, false);
+					r.updateView();
+				}
+			} catch (Exception e) {
+			}
+		}
+	}
+
+	@SideOnly(Side.CLIENT)
+	public static void loadModels(){
+		Minecraft mc = Minecraft.getMinecraft();
+		mc.getRenderItem().getItemModelMesher().register(ItemPart.instance, 1024, AE2Plugin.SATELLITE_BUS.getItemModels().get(0));
+		ModelLoader.setCustomModelResourceLocation(ItemPart.instance, 1024, AE2Plugin.SATELLITE_BUS.getItemModels().get(0));
 	}
 }

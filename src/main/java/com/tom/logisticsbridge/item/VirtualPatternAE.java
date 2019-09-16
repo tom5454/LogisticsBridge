@@ -19,7 +19,7 @@ import net.minecraftforge.common.util.Constants.NBT;
 
 import com.tom.logisticsbridge.AE2Plugin;
 import com.tom.logisticsbridge.LogisticsBridge;
-import com.tom.logisticsbridge.api.IDynamicPatternDetails;
+import com.tom.logisticsbridge.api.IDynamicPatternDetailsAE;
 
 import appeng.api.AEApi;
 import appeng.api.implementations.ICraftingPatternItem;
@@ -28,13 +28,13 @@ import appeng.api.storage.channels.IItemStorageChannel;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.util.item.AEItemStack;
 
-public class VirtualPattern extends Item implements ICraftingPatternItem {
+public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 	private static final WeakHashMap<NBTTagCompound, ICraftingPatternDetails> CACHE = new WeakHashMap<>();
 	private static final String DYNAMIC_PATTERN_ID = "__dyPatternDetails";
 	static {
-		IDynamicPatternDetails.FACTORIES.put("te", IDynamicPatternDetails.TileEntityWrapper::create);
+		IDynamicPatternDetailsAE.FACTORIES.put("te", IDynamicPatternDetailsAE.TileEntityWrapper::create);
 	}
-	public VirtualPattern() {
+	public VirtualPatternAE() {
 		setUnlocalizedName("lb.virtPattern");
 	}
 	@Override
@@ -50,18 +50,18 @@ public class VirtualPattern extends Item implements ICraftingPatternItem {
 	}
 	public static ICraftingPatternDetails create(ItemStack output){
 		NBTTagCompound ot = output.writeToNBT(new NBTTagCompound());
-		return CACHE.computeIfAbsent(ot, VirtualPattern::create);
+		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);
 	}
 	public static ICraftingPatternDetails create(ItemStack input, ItemStack output){
 		NBTTagCompound ot = new NBTTagCompound();
 		ot.setTag("in", input.writeToNBT(new NBTTagCompound()));
 		ot.setTag("out", output.writeToNBT(new NBTTagCompound()));
-		return CACHE.computeIfAbsent(ot, VirtualPattern::create);
+		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);
 	}
-	public static ICraftingPatternDetails create(ItemStack output, IDynamicPatternDetails handler){
+	public static ICraftingPatternDetails create(ItemStack output, IDynamicPatternDetailsAE handler){
 		NBTTagCompound ot = output.writeToNBT(new NBTTagCompound());
-		ot.setTag(DYNAMIC_PATTERN_ID, IDynamicPatternDetails.save(handler));
-		return CACHE.computeIfAbsent(ot, VirtualPattern::create);
+		ot.setTag(DYNAMIC_PATTERN_ID, IDynamicPatternDetailsAE.save(handler));
+		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);
 	}
 	private static ICraftingPatternDetails create(NBTTagCompound ot){
 		ItemStack is = new ItemStack(AE2Plugin.virtualPattern);
@@ -93,7 +93,7 @@ public class VirtualPattern extends Item implements ICraftingPatternItem {
 		private final IAEItemStack[] inputs;
 		private final IAEItemStack[] outputs;
 		private final IAEItemStack pattern;
-		private final IDynamicPatternDetails dynamic;
+		private final IDynamicPatternDetailsAE dynamic;
 		private int priority = 0;
 
 		public VirtualPatternHandler(ItemStack is) {
@@ -218,7 +218,7 @@ public class VirtualPattern extends Item implements ICraftingPatternItem {
 				offset++;
 			}
 			if(tag.hasKey("dynamic", NBT.TAG_COMPOUND)){
-				dynamic = IDynamicPatternDetails.load(tag.getCompoundTag("dynamic"));
+				dynamic = IDynamicPatternDetailsAE.load(tag.getCompoundTag("dynamic"));
 			}else{
 				dynamic = null;
 			}

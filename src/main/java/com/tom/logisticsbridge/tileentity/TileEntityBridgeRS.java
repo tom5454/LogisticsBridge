@@ -5,8 +5,10 @@ import java.util.List;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -16,9 +18,10 @@ import net.minecraftforge.items.CapabilityItemHandler;
 import com.raoulvdberge.refinedstorage.tile.TileNode;
 
 import com.tom.logisticsbridge.api.BridgeStack;
+import com.tom.logisticsbridge.api.IDynamicPatternDetailsRS;
 import com.tom.logisticsbridge.pipe.BridgePipe.Req;
 
-public class TileEntityBridgeRS extends TileNode<NetworkNodeBridge> implements IBridge {
+public class TileEntityBridgeRS extends TileNode<NetworkNodeBridge> implements IBridge, IDynamicPatternDetailsRS {
 
 	@Override
 	public NetworkNodeBridge createNode(World world, BlockPos pos) {
@@ -66,5 +69,14 @@ public class TileEntityBridgeRS extends TileNode<NetworkNodeBridge> implements I
 		}
 
 		return super.getCapability(capability, facing);
+	}
+
+	@Override
+	public NonNullList<ItemStack> getInputs(ItemStack res, NonNullList<ItemStack> def) {
+		return getNode().getInputs(res, def);
+	}
+
+	public void infoMessage(EntityPlayer playerIn) {
+		getNode().infoMessage(playerIn);
 	}
 }
