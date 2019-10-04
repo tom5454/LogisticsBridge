@@ -1,6 +1,7 @@
 package com.tom.logisticsbridge.pipe;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -9,10 +10,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.text.TextComponentTranslation;
 
 import com.tom.logisticsbridge.api.BridgeStack;
 import com.tom.logisticsbridge.tileentity.IBridge;
@@ -28,7 +32,9 @@ import logisticspipes.logistics.LogisticsManager;
 import logisticspipes.logisticspipes.IRoutedItem;
 import logisticspipes.logisticspipes.IRoutedItem.TransportMode;
 import logisticspipes.modules.abstractmodules.LogisticsModule;
+import logisticspipes.modules.abstractmodules.LogisticsModule.ModulePositionType;
 import logisticspipes.pipefxhandlers.Particles;
+import logisticspipes.pipes.PipeLogisticsChassi.ChassiTargetInformation;
 import logisticspipes.pipes.basic.CoreRoutedPipe;
 import logisticspipes.proxy.SimpleServiceLocator;
 import logisticspipes.request.ICraftingTemplate;
@@ -51,6 +57,7 @@ import logisticspipes.routing.order.LogisticsOrder;
 import logisticspipes.textures.Textures;
 import logisticspipes.textures.Textures.TextureType;
 import logisticspipes.utils.SinkReply;
+import logisticspipes.utils.SinkReply.FixedPriority;
 import logisticspipes.utils.item.ItemIdentifier;
 import logisticspipes.utils.item.ItemIdentifierStack;
 import network.rs485.logisticspipes.connection.NeighborTileEntity;
@@ -58,13 +65,23 @@ import network.rs485.logisticspipes.world.WorldCoordinatesWrapper;
 
 public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IRequestItems, IChangeListener, ICraftItems, IRequireReliableTransport {
 	public static TextureType TEXTURE = Textures.empty;
+	private BPModule itemSinkModule;
 	//protected LogisticsItemOrderManager _orderManager = new LogisticsItemOrderManager(this, this);
 	private IBridge bridge;
 	private EnumFacing dir;
 	private Req reqapi = new Req();
+	public boolean isDefaultRoute;
 	public BridgePipe(Item item) {
 		super(item);
 		_orderItemManager = new LogisticsItemOrderManager(this, this);
+		itemSinkModule = new BPModule();
+		itemSinkModule.registerHandler(this, this);
+	}
+
+	@Override
+	public void setTile(TileEntity tile) {
+		super.setTile(tile);
+		itemSinkModule.registerPosition(ModulePositionType.IN_PIPE, 0);
 	}
 
 	@Override
@@ -79,7 +96,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 
 	@Override
 	public LogisticsModule getLogisticsModule() {
-		return null;
+		return itemSinkModule;
 	}
 
 	@Override
@@ -87,7 +104,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		/*System.out.println("BridgePipe.canProvide()");
 		System.out.println(tree);
 		System.out.println(root);*/
-		if (!isEnabled() || canCraft(tree.getRequestType())) {
+		if (!isEnabled() || bridge == null || canCraft(tree.getRequestType())) {
 			return;
 		}
 		if (tree.getRequestType() instanceof ItemResource) {
@@ -353,8 +370,6 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		return bridge.extractStack(item.makeNormalStack(1), count, false);
 	}
 
-	@Override public void listenedChanged() {}
-
 	@Override
 	public boolean logisitcsIsPipeConnected(TileEntity tile, EnumFacing dir) {
 		return tile instanceof IBridge;
@@ -386,20 +401,10 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		return bridge.getItems().stream().anyMatch(b -> b.craftable && item.isItemEqual(b.obj) && !cr.stream().anyMatch(i -> item.isItemEqual(i)));
 	}
 
-	@Override
-	public int getTodo() {
-		return 0;
-	}
-
-	@Override
-	public void itemLost(ItemIdentifierStack item, IAdditionalTargetInformation info) {
-
-	}
-
-	@Override
-	public void itemArrived(ItemIdentifierStack item, IAdditionalTargetInformation info) {
-
-	}
+	@Override public void listenedChanged() {}
+	@Override public int getTodo() { return 0; }
+	@Override public void itemLost(ItemIdentifierStack item, IAdditionalTargetInformation info) {}
+	@Override public void itemArrived(ItemIdentifierStack item, IAdditionalTargetInformation info) {}
 
 	@Override
 	public List<ItemIdentifierStack> getCraftedItems() {
@@ -497,21 +502,16 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 			if(count == 0 && !craft){
 				return new OpResult(Collections.singletonList(wanted));
 			}
-			//System.out.println("BridgePipe.Req.performRequest()");
 			int reqCount = craft ? wanted.getCount() : Math.min(count, wanted.getCount());
 			boolean success = request(ItemIdentifier.get(wanted).makeStack(reqCount), BridgePipe.this, ll, null);
 			OpResult res = ll.asResult();
+			res.success = success;
 			if(!craft && wanted.getCount() > count){
 				int missingCount = wanted.getCount() - count;
 				ItemStack missingStack = wanted.copy();
 				missingStack.setCount(missingCount);
 				res.missing.add(missingStack);
 			}
-			/*if(success){
-				ItemStack w = wanted.copy();
-				w.setCount(reqCount);
-				res.used.add(w);
-			}*/
 
 			return res;
 		}
@@ -519,6 +519,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 	public static class OpResult {
 		public List<ItemStack> used;
 		public List<ItemStack> missing;
+		public boolean success;
 		public OpResult() {
 		}
 		public OpResult(List<ItemStack> missing) {
@@ -572,6 +573,98 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 				}
 			}
 			return list;
+		}
+	}
+	@Override
+	public void writeToNBT(NBTTagCompound nbttagcompound) {
+		super.writeToNBT(nbttagcompound);
+		nbttagcompound.setBoolean("isDefaultRoute", isDefaultRoute);
+	}
+	@Override
+	public void readFromNBT(NBTTagCompound nbttagcompound) {
+		super.readFromNBT(nbttagcompound);
+		isDefaultRoute = nbttagcompound.getBoolean("isDefaultRoute");
+	}
+	public class BPModule extends LogisticsModule {
+		private SinkReply _sinkReply;
+		private SinkReply _sinkReplyDefault;
+
+		@Override
+		public final int getX() {
+			if (slot.isInWorld()) {
+				return _service.getX();
+			} else {
+				return 0;
+			}
+		}
+
+		@Override
+		public final int getY() {
+			if (slot.isInWorld()) {
+				return _service.getY();
+			} else {
+				return -1;
+			}
+		}
+
+		@Override
+		public final int getZ() {
+			if (slot.isInWorld()) {
+				return _service.getZ();
+			} else {
+				return -1 - positionInt;
+			}
+		}
+
+		@Override
+		public void registerPosition(ModulePositionType slot, int positionInt) {
+			super.registerPosition(slot, positionInt);
+			_sinkReply = new SinkReply(FixedPriority.ItemSink, 0, true, false, 1, 0, new ChassiTargetInformation(getPositionInt()));
+			_sinkReplyDefault = new SinkReply(FixedPriority.DefaultRoute, 0, true, true, 1, 0, new ChassiTargetInformation(getPositionInt()));
+		}
+
+		@Override
+		public SinkReply sinksItem(ItemIdentifier item, int bestPriority, int bestCustomPriority, boolean allowDefault, boolean includeInTransit,
+				boolean forcePassive) {
+			if (isDefaultRoute && !allowDefault) {
+				return null;
+			}
+			if (bestPriority > _sinkReply.fixedPriority.ordinal() || (bestPriority == _sinkReply.fixedPriority.ordinal() && bestCustomPriority >= _sinkReply.customPriority)) {
+				return null;
+			}
+			if (isDefaultRoute) {
+				if (bestPriority > _sinkReplyDefault.fixedPriority.ordinal() || (bestPriority == _sinkReplyDefault.fixedPriority.ordinal() && bestCustomPriority >= _sinkReplyDefault.customPriority)) {
+					return null;
+				}
+				if (_service.canUseEnergy(1)) {
+					return _sinkReplyDefault;
+				}
+				return null;
+			}
+			return null;
+		}
+
+		@Override
+		public boolean hasGenericInterests() {
+			return isDefaultRoute;
+		}
+
+		@Override public LogisticsModule getSubModule(int slot) { return null; }
+		@Override public void tick() {}
+		@Override public void readFromNBT(NBTTagCompound nbttagcompound) {}
+		@Override public void writeToNBT(NBTTagCompound nbttagcompound) {}
+		@Override public Collection<ItemIdentifier> getSpecificInterests() { return null; }
+		@Override public boolean interestedInAttachedInventory() { return false; }
+		@Override public boolean interestedInUndamagedID() { return false; }
+		@Override public boolean recievePassive() { return true; }
+
+	}
+	@Override
+	public void onWrenchClicked(EntityPlayer entityplayer) {
+		if(!getWorld().isRemote) {
+			isDefaultRoute = !isDefaultRoute;
+			entityplayer.sendMessage(new TextComponentTranslation("chat.logisticsbridge.bridgeDefaultRoute",
+					new TextComponentTranslation("gui.itemsink." + (isDefaultRoute ? "Yes" : "No"))));
 		}
 	}
 }

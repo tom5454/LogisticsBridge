@@ -2,7 +2,7 @@
     "parent": "block/cube_bottom_top",
     "textures": {
         "side": "refinedstorage:blocks/interface_disconnected",
-        "top": "logisticsbridge:blocks/bridge_top",
+        "top": "logisticsbridge:blocks/bridge_top_rs0",
         "bottom": "refinedstorage:blocks/bottom"
     }
 }

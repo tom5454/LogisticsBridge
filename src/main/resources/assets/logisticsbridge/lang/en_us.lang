@@ -38,6 +38,8 @@ tooltip.logisticsbridge.packageEmt=Package Empty
 tooltip.logisticsbridge.satID=Satellite ID: %s
 tooltip.logisticsbridge.packageName=%s to %s
 
+chat.logisticsbridge.bridgeDefaultRoute=Bridge Pipe default route: %s
+
 gui.resultPipe.id=Result Pipe ID
 gui.craftingManager=Crafting Manager
 gui.craftingManager.openCfg=Open Config

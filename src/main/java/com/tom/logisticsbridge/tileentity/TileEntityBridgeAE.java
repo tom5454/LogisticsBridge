@@ -1,6 +1,5 @@
 package com.tom.logisticsbridge.tileentity;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -95,7 +94,8 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	private List<ItemStack> insertingStacks = new ArrayList<>();
 	private final IAEItemStack FAKE_ITEM = ITEMS.createStack(new ItemStack(LogisticsBridge.logisticsFakeItem, 1));
 	private long lastInjectTime;
-	private WeakReference<OpResult> lastPush;
+	private OpResult lastPush;
+	private long lastPushTime;
 	private boolean disableLP;
 
 	public TileEntityBridgeAE() {
@@ -155,7 +155,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 
 	@Override
 	public long countItem(ItemStack stack, boolean requestable){
-		if(this.getProxy().getNode() == null)return 0;
+		if(this.getProxy().getNode() == null || disableLP)return 0;
 		int buffered = 0;
 		for(int i = 0;i<dynInv.getSizeInventory();i++){
 			ItemStack is = dynInv.getStackInSlot(i);
@@ -173,7 +173,8 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 		IMEInventoryHandler<IAEItemStack> i = g.getInventory(ITEMS);
 		IItemList<IAEItemStack> items = i.getAvailableItems(ITEMS.createList());
 		IAEItemStack is = items.findPrecise(ITEMS.createStack(stack));
-		return is == null ? 0 : requestable ? is.getStackSize()+is.getCountRequestable()+buffered : is.getStackSize()+buffered;
+		long inAE = is == null ? 0 : requestable ? is.getStackSize()+is.getCountRequestable() : is.getStackSize();
+		return inAE + buffered;
 	}
 
 	@Override
@@ -264,7 +265,6 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 		}else{
 			return null;
 		}
-		//return intInv.injectItems(items, mode, this);
 	}
 
 	@Override
@@ -463,7 +463,8 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 					dynInv.insert(stack.copy());
 			}
 		}else{
-			lastPush = new WeakReference<>(opres);
+			lastPush = opres;
+			lastPushTime = System.currentTimeMillis();
 		}
 		return pushed;
 	}
@@ -509,7 +510,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	public String infoString() {
 		StringBuilder b = new StringBuilder();
 		if(disableLP)b.append("  disableLP flag is stuck\n");
-		if(lastPush != null && lastPush.get() != null)b.append("  Missing items:\n");
+		if(lastPush != null)b.append("  Missing items:\n");
 		return b.toString();
 	}
 
@@ -517,12 +518,22 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 		String info = infoString();
 		if(info.isEmpty())info = "  No problems";
 		TextComponentString text = new TextComponentString("AE Bridge\n" + info);
-		if(lastPush != null && lastPush.get() != null){
-			OpResult or = lastPush.get();
-			for(ItemStack i : or.missing){
-				text.appendText("  ");
+		if(lastPush != null){
+			for(ItemStack i : lastPush.missing){
+				text.appendText("    ");
 				text.appendSibling(i.getTextComponent());
-				text.appendText("\n");
+				text.appendText(" * " + i.getCount() + "\n");
+			}
+			long ago = System.currentTimeMillis() - lastPushTime;
+			text.appendText(String.format("  %1$tH %1$tM,%1$tS ago\n", ago));
+		}
+		if(dynInv.getSizeInventory() > 0){
+			text.appendText("Stored items:\n");
+			for (int i = 0; i < dynInv.getSizeInventory(); i++) {
+				ItemStack is = dynInv.getStackInSlot(i);
+				text.appendText("    ");
+				text.appendSibling(is.getTextComponent());
+				text.appendText(" * " + is.getCount() + "\n");
 			}
 		}
 		playerIn.sendMessage(text);

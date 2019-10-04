@@ -201,7 +201,7 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 		super.update();
 		if(!world.isRemote){
 			long wt = world.getTotalWorldTime();
-			if(reqapi != null && wt % 20 == 0){
+			if(reqapi != null && wt % 20 == 0 && network != null){
 				List<ItemStack> stack = new ArrayList<>(list.getStacks());
 				List<ItemStack> pi = reqapi.getProvidedItems();
 				list.clear();
