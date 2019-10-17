@@ -92,7 +92,7 @@ public class DynamicInventory implements IInventory {
 
 	@Override
 	public boolean isItemValidForSlot(int index, ItemStack stack) {
-		return false;
+		return true;
 	}
 
 	@Override

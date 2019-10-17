@@ -145,7 +145,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 		List<BridgeStack<ItemStack>> list = Stream.concat(
 				StreamSupport.stream(Spliterators.spliteratorUnknownSize(items.iterator(), Spliterator.ORDERED), false).
 				map(ae -> new BridgeStack<>(ae.asItemStackRepresentation(), ae.getStackSize(), ae.isCraftable(), ae.getCountRequestable())).
-				filter(s -> s.obj.getItem() != LogisticsBridge.logisticsFakeItem),
+				filter(s -> s.obj.getItem() != LogisticsBridge.logisticsFakeItem && s.obj.getItem() != LogisticsBridge.packageItem),
 
 				Stream.concat(insertingStacks.stream(), dynInv.stream())
 				.map(s -> new BridgeStack<>(s, s.getCount(), false, 0))
@@ -452,7 +452,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 			if(table.getStackInSlot(i).getItem() != LogisticsBridge.logisticsFakeItem)
 				insertingStacks.add(table.getStackInSlot(i));
 		}
-		OpResult opres = reqapi.performRequest(patternDetails.getOutputs()[0].asItemStackRepresentation(), true);
+		OpResult opres = reqapi.performRequest(patternDetails.getOutputs()[0].createItemStack(), true);
 		boolean pushed = opres.missing.isEmpty();
 		insertingStacks.clear();
 		if(pushed){
@@ -486,8 +486,45 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 		try {
 			disableLP = true;
 			boolean craftable = reqapi.getCraftedItems().stream().anyMatch(s -> res.isItemEqual(s));
-			OpResult r = reqapi.simulateRequest(res, true, true);
+			OpResult r = reqapi.simulateRequest(res, 0b0001, true);
 			return Stream.concat(r.missing.stream(), Stream.of(LogisticsBridge.fakeStack(craftable ? null : res, 1))).map(ITEMS::createStack).toArray(IAEItemStack[]::new);
+		} finally {
+			disableLP = false;
+		}
+	}
+
+	@Override
+	public IAEItemStack[] getOutputs(ItemStack res, IAEItemStack[] def, boolean condensed) {
+		if(reqapi == null || !reqapi.isDefaultRoute() || Loader.instance().getLoaderState() == LoaderState.SERVER_STOPPING)return def;
+		try {
+			disableLP = true;
+			OpResult r = reqapi.simulateRequest(res, 0b0110, true);
+			List<IAEItemStack> ret = new ArrayList<>();
+			IAEItemStack resAE = ITEMS.createStack(res);
+			/*if(def != null)
+				for (int i = 0; i < def.length; i++) ret.add(def[i].copy());*/
+			if(def != null)ret.add(resAE.copy());
+			r.extra.forEach(i -> {
+				IAEItemStack is = ITEMS.createStack(i);
+				boolean added = false;
+				for (IAEItemStack e : ret) {
+					if(e.equals(is)) {
+						e.add(is);
+						added = true;
+						break;
+					}
+				}
+				if(!added)ret.add(is);
+			});
+			if(def == null){
+				for (IAEItemStack e : ret) {
+					if(e.equals(resAE)) {
+						res.setCount(((int) e.getStackSize()) + res.getCount());
+					}
+				}
+				return null;
+			}
+			return ret.toArray(new IAEItemStack[0]);
 		} finally {
 			disableLP = false;
 		}

@@ -50,6 +50,13 @@ public class GuiHandler implements IGuiHandler {
 			}
 			return null;
 		}
+		if(ID == 5){
+			final TileEntity TE = world.getTileEntity( new BlockPos( x, y, z ) );
+			if (TE != null && TE instanceof IIdPipe) {
+				return new DummyContainer(player.inventory, null);
+			}
+			return null;
+		}
 		switch (GuiIDs.VALUES[ID]) {
 		case ResultPipe:
 		{
@@ -96,6 +103,13 @@ public class GuiHandler implements IGuiHandler {
 				if(part instanceof PartSatelliteBus){
 					return new GuiResultPipe((IIdPipe) part, player, 0);
 				}
+			}
+			return null;
+		}
+		if(ID == 5){
+			final TileEntity TE = world.getTileEntity( new BlockPos( x, y, z ) );
+			if (TE != null && TE instanceof IIdPipe) {
+				return new GuiResultPipe((IIdPipe) TE, player, 0);
 			}
 			return null;
 		}

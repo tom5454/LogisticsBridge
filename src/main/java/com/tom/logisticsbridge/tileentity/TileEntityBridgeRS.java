@@ -19,6 +19,7 @@ import com.raoulvdberge.refinedstorage.tile.TileNode;
 
 import com.tom.logisticsbridge.api.BridgeStack;
 import com.tom.logisticsbridge.api.IDynamicPatternDetailsRS;
+import com.tom.logisticsbridge.node.NetworkNodeBridge;
 import com.tom.logisticsbridge.pipe.BridgePipe.Req;
 
 public class TileEntityBridgeRS extends TileNode<NetworkNodeBridge> implements IBridge, IDynamicPatternDetailsRS {
@@ -74,6 +75,11 @@ public class TileEntityBridgeRS extends TileNode<NetworkNodeBridge> implements I
 	@Override
 	public NonNullList<ItemStack> getInputs(ItemStack res, NonNullList<ItemStack> def) {
 		return getNode().getInputs(res, def);
+	}
+
+	@Override
+	public NonNullList<ItemStack> getOutputs(ItemStack res, NonNullList<ItemStack> def) {
+		return getNode().getOutputs(res, def);
 	}
 
 	public void infoMessage(EntityPlayer playerIn) {

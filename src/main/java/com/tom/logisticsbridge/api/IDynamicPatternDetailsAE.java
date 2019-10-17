@@ -40,6 +40,7 @@ public interface IDynamicPatternDetailsAE {
 		throw new AbstractMethodError("Missing impl: " + getClass());
 	}
 	IAEItemStack[] getInputs(ItemStack res, IAEItemStack[] def, boolean condensed);
+	IAEItemStack[] getOutputs(ItemStack res, IAEItemStack[] def, boolean condensed);
 	public class TileEntityWrapper implements IDynamicPatternDetailsAE {
 		private int dim;
 		private BlockPos pos;
@@ -75,7 +76,9 @@ public interface IDynamicPatternDetailsAE {
 				World w = FMLCommonHandler.instance().getMinecraftServerInstance().getWorld(dim);
 				if(w != null){
 					TileEntity te = w.getTileEntity(pos);
-					if(te instanceof IDynamicPatternDetailsAE)this.tile = (IDynamicPatternDetailsAE) te;
+					if(te instanceof IDynamicPatternDetailsAE){
+						this.tile = (IDynamicPatternDetailsAE) te;
+					}
 				}
 			}
 		}
@@ -84,6 +87,12 @@ public interface IDynamicPatternDetailsAE {
 		public IAEItemStack[] getInputs(ItemStack res, IAEItemStack[] def, boolean condensed) {
 			load();
 			return tile != null ? tile.getInputs(res, def, condensed) : def;
+		}
+
+		@Override
+		public IAEItemStack[] getOutputs(ItemStack res, IAEItemStack[] def, boolean condensed) {
+			load();
+			return tile != null ? tile.getOutputs(res, def, condensed) : def;
 		}
 
 	}

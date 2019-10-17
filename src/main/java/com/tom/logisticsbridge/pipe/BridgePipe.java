@@ -1,13 +1,23 @@
 package com.tom.logisticsbridge.pipe;
 
+import java.lang.invoke.LambdaMetafactory;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import net.minecraft.entity.player.EntityPlayer;
@@ -18,6 +28,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.text.TextComponentTranslation;
 
+import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.api.BridgeStack;
 import com.tom.logisticsbridge.tileentity.IBridge;
 
@@ -38,10 +49,12 @@ import logisticspipes.pipes.PipeLogisticsChassi.ChassiTargetInformation;
 import logisticspipes.pipes.basic.CoreRoutedPipe;
 import logisticspipes.proxy.SimpleServiceLocator;
 import logisticspipes.request.ICraftingTemplate;
+import logisticspipes.request.IExtraPromise;
 import logisticspipes.request.IPromise;
 import logisticspipes.request.ItemCraftingTemplate;
 import logisticspipes.request.RequestLog;
 import logisticspipes.request.RequestTree;
+import logisticspipes.request.RequestTree.ActiveRequestType;
 import logisticspipes.request.RequestTreeNode;
 import logisticspipes.request.resources.DictResource;
 import logisticspipes.request.resources.IResource;
@@ -66,11 +79,50 @@ import network.rs485.logisticspipes.world.WorldCoordinatesWrapper;
 public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IRequestItems, IChangeListener, ICraftItems, IRequireReliableTransport {
 	public static TextureType TEXTURE = Textures.empty;
 	private BPModule itemSinkModule;
-	//protected LogisticsItemOrderManager _orderManager = new LogisticsItemOrderManager(this, this);
 	private IBridge bridge;
 	private EnumFacing dir;
 	private Req reqapi = new Req();
 	public boolean isDefaultRoute;
+	//private static Method recurseFailedRequestTree;
+	private static Consumer<RequestTreeNode> recurseFailedRequestTree;
+	private static Function<RequestTreeNode, List<RequestTreeNode>> subRequests;
+	private static Function<RequestTreeNode, List<IExtraPromise>> extrapromises;
+	static {
+		try {
+			Method m = RequestTreeNode.class.getDeclaredMethod("recurseFailedRequestTree");
+			Field srf = RequestTreeNode.class.getDeclaredField("subRequests");
+			Field ef = RequestTreeNode.class.getDeclaredField("extrapromises");
+			Constructor<MethodHandles.Lookup> lookupCons = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class);
+			lookupCons.setAccessible(true);
+			MethodHandles.Lookup lookup = lookupCons.newInstance(RequestTreeNode.class);
+			Method imc = Consumer.class.getDeclaredMethods()[0];
+			MethodType imct = MethodType.methodType(imc.getReturnType(), imc.getParameterTypes());
+			MethodHandle mh = lookup.unreflect(m);
+			recurseFailedRequestTree = (Consumer<RequestTreeNode>) LambdaMetafactory.metafactory(lookup, "accept",
+					MethodType.methodType(Consumer.class), imct, mh, mh.type()).getTarget().invoke();
+			MethodHandle srm = lookup.unreflectGetter(srf);
+			MethodHandle em = lookup.unreflectGetter(ef);
+			subRequests = t -> {
+				try {
+					return (List<RequestTreeNode>) srm.invoke(t);
+				} catch (Throwable e) {
+					e.printStackTrace();
+					return Collections.emptyList();
+				}
+			};
+			extrapromises = t -> {
+				try {
+					return (List<IExtraPromise>) em.invoke(t);
+				} catch (Throwable e) {
+					e.printStackTrace();
+					return Collections.emptyList();
+				}
+			};
+			LogisticsBridge.log.info("Initialized reflection in Bridge Pipe");
+		} catch (Throwable e) {
+			throw new RuntimeException("Missing methods in LP", e);
+		}
+	}
 	public BridgePipe(Item item) {
 		super(item);
 		_orderItemManager = new LogisticsItemOrderManager(this, this);
@@ -455,8 +507,10 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 			}
 			return list;
 		}
-
-		public OpResult simulateRequest(ItemStack wanted, boolean craft, boolean allowPartial) {
+		/**
+		 * @param craft bits: processExtra,onlyCraft,enableCraft
+		 * */
+		public OpResult simulateRequest(ItemStack wanted, int craft, boolean allowPartial) {
 			if(!isEnabled()){
 				OpResult r = new OpResult();
 				r.used = Collections.emptyList();
@@ -469,7 +523,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 			Map<ItemIdentifier, Integer> items = SimpleServiceLocator.logisticsManager.getAvailableItems(exits);
 			ItemIdentifier req = ItemIdentifier.get(wanted);
 			int count = items.getOrDefault(req, 0);
-			if(count == 0 && !craft){
+			if(count == 0 && craft == 0){
 				OpResult r = new OpResult();
 				r.used = Collections.emptyList();
 				r.missing = Collections.singletonList(wanted);
@@ -478,9 +532,20 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 			ListLog ll = new ListLog();
 			/*System.out.println("BridgePipe.Req.simulateRequest()");
 			System.out.println(wanted);*/
-			simulate(ItemIdentifier.get(wanted).makeStack(craft ? wanted.getCount() : Math.min(count, wanted.getCount())), BridgePipe.this, ll);
+			ItemIdentifierStack item = ItemIdentifier.get(wanted).makeStack(craft != 0 ? wanted.getCount() : Math.min(count, wanted.getCount()));
+			ItemResource reqRes = new ItemResource(item, BridgePipe.this);
+			RequestTree tree = new RequestTree(reqRes, null, (craft & 0b0010) != 0 ? EnumSet.of(ActiveRequestType.Craft) : RequestTree.defaultRequestFlags, null);
+			if (!tree.isDone()) {
+				recurseFailedRequestTree.accept(tree);
+			}
+			tree.sendUsedMessage(ll);
 			OpResult res = ll.asResult();
-			if(!craft && !allowPartial && wanted.getCount() > count){
+			if((craft & 0b0100) != 0 && isDefaultRoute){
+				List<IExtraPromise> extrasPromises = new ArrayList<>();
+				listExras(tree, extrasPromises);
+				res.extra = extrasPromises.stream().map(e -> e.getItemType().makeNormalStack(e.getAmount())).collect(Collectors.toList());
+			}
+			if(craft == 0 && !allowPartial && wanted.getCount() > count){
 				int missingCount = wanted.getCount() - count;
 				ItemStack missingStack = wanted.copy();
 				missingStack.setCount(missingCount);
@@ -515,10 +580,15 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 
 			return res;
 		}
+
+		public boolean isDefaultRoute() {
+			return isDefaultRoute;
+		}
 	}
 	public static class OpResult {
 		public List<ItemStack> used;
 		public List<ItemStack> missing;
+		public List<ItemStack> extra = new ArrayList<>();
 		public boolean success;
 		public OpResult() {
 		}
@@ -535,8 +605,22 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		return RequestTree.request(item, requester, log, false, false, true, true, RequestTree.defaultRequestFlags, info) == item.getStackSize();
 	}
 
-	public static int simulate(ItemIdentifierStack item, IRequestItems requester, RequestLog log) {
-		return RequestTree.request(item, requester, log, true, true, false, true, RequestTree.defaultRequestFlags, null);
+	/*public static int simulate(ItemIdentifierStack item, IRequestItems requester, RequestLog log) {
+		//return RequestTree.request(item, requester, log, true, true, false, true, RequestTree.defaultRequestFlags, null);
+
+		ItemResource req = new ItemResource(item, requester);
+		RequestTree tree = new RequestTree(req, null, RequestTree.defaultRequestFlags, null);
+		if (log != null) {
+			if (!tree.isDone()) {
+				recurseFailedRequestTree.accept(tree);
+			}
+			tree.sendUsedMessage(log);
+		}
+		return tree.getPromiseAmount();
+	}*/
+	public static void listExras(RequestTreeNode node, List<IExtraPromise> list){
+		list.addAll(extrapromises.apply(node));
+		subRequests.apply(node).forEach(n -> listExras(n, list));
 	}
 	public static class ListLog implements RequestLog {
 		private final List<IResource> missing = new ArrayList<>();

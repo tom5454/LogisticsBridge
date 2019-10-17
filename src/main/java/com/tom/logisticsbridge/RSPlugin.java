@@ -28,7 +28,8 @@ import com.raoulvdberge.refinedstorage.item.ItemProcessor;
 
 import com.tom.logisticsbridge.block.BlockBridgeRS;
 import com.tom.logisticsbridge.item.VirtualPatternRS;
-import com.tom.logisticsbridge.tileentity.NetworkNodeBridge;
+import com.tom.logisticsbridge.node.NetworkNodeBridge;
+import com.tom.logisticsbridge.node.NetworkNodeSatellite;
 import com.tom.logisticsbridge.tileentity.TileEntityBridgeRS;
 
 import logisticspipes.LPItems;
@@ -38,15 +39,24 @@ public class RSPlugin {
 	public static IRSAPI rsapi;
 
 	public static VirtualPatternRS virtualPattern;
+	//public static Block satelliteBus;
 
 	public static void preInit(){
 		virtualPattern = new VirtualPatternRS();
+		//satelliteBus = new BlockSatelliteBus();
 		LogisticsBridge.bridgeRS = new BlockBridgeRS().setUnlocalizedName("lb.bridge.rs");
 		LogisticsBridge.registerBlock(LogisticsBridge.bridgeRS);
+		//LogisticsBridge.registerBlock(satelliteBus);
 		LogisticsBridge.registerItem(virtualPattern, true);
 		GameRegistry.registerTileEntity(TileEntityBridgeRS.class, new ResourceLocation(LogisticsBridge.ID, "bridge_rs"));
+		//GameRegistry.registerTileEntity(TileEntitySatelliteBus.class, new ResourceLocation(LogisticsBridge.ID, "satellite_bus_rs"));
 		API.instance().getNetworkNodeRegistry().add(NetworkNodeBridge.ID, (tag, world, pos) -> {
 			NetworkNode node = new NetworkNodeBridge(world, pos);
+			node.read(tag);
+			return node;
+		});
+		API.instance().getNetworkNodeRegistry().add(NetworkNodeSatellite.ID, (tag, world, pos) -> {
+			NetworkNode node = new NetworkNodeSatellite(world, pos);
 			node.read(tag);
 			return node;
 		});

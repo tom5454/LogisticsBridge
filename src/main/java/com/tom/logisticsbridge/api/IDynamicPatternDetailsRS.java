@@ -39,6 +39,7 @@ public interface IDynamicPatternDetailsRS {
 		throw new AbstractMethodError("Missing impl: " + getClass());
 	}
 	NonNullList<ItemStack> getInputs(ItemStack res, NonNullList<ItemStack> def);
+	NonNullList<ItemStack> getOutputs(ItemStack res, NonNullList<ItemStack> def);
 	public class TileEntityWrapper implements IDynamicPatternDetailsRS {
 		private int dim;
 		private BlockPos pos;
@@ -89,5 +90,10 @@ public interface IDynamicPatternDetailsRS {
 			return tile != null ? tile.getInputs(res, def) : def;
 		}
 
+		@Override
+		public NonNullList<ItemStack> getOutputs(ItemStack res, NonNullList<ItemStack> def) {
+			load();
+			return tile != null ? tile.getOutputs(res, def) : def;
+		}
 	}
 }

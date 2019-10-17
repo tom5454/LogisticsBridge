@@ -127,6 +127,7 @@ public class VirtualPatternRS extends Item implements ICraftingPatternProvider {
 			}
 			if(tag.hasKey("dynamic", NBT.TAG_COMPOUND)){
 				dynamic = IDynamicPatternDetailsRS.load(tag.getCompoundTag("dynamic"));
+				dynamic.getOutputs(result, null);
 			}else{
 				dynamic = null;
 			}
@@ -165,7 +166,7 @@ public class VirtualPatternRS extends Item implements ICraftingPatternProvider {
 
 		@Override
 		public NonNullList<ItemStack> getOutputs() {
-			return out;
+			return dynamic != null ? dynamic.getOutputs(result, out) : out;
 		}
 
 		@Override

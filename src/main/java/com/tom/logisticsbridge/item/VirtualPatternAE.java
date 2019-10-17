@@ -219,6 +219,7 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 			}
 			if(tag.hasKey("dynamic", NBT.TAG_COMPOUND)){
 				dynamic = IDynamicPatternDetailsAE.load(tag.getCompoundTag("dynamic"));
+				dynamic.getOutputs(result, null, false);
 			}else{
 				dynamic = null;
 			}
@@ -251,12 +252,12 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 
 		@Override
 		public IAEItemStack[] getCondensedOutputs() {
-			return condensedOutputs;
+			return dynamic != null ? dynamic.getOutputs(result, condensedOutputs, true) : condensedOutputs;
 		}
 
 		@Override
 		public IAEItemStack[] getOutputs() {
-			return outputs;
+			return dynamic != null ? dynamic.getOutputs(result, outputs, true) : outputs;
 		}
 
 		@Override

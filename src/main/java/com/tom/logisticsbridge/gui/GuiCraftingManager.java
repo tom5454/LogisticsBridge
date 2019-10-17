@@ -95,7 +95,7 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 		}else{
 			ItemStack stack = slotIn.getStack();
 			if(slotIn.slotNumber < 27 && !stack.isEmpty() && stack.hasTagCompound() && isShiftKeyDown()){
-				NBTTagCompound info = stack.getSubCompound("moduleInformation");
+				NBTTagCompound info = stack.getTagCompound().getCompoundTag("moduleInformation");
 				NBTTagList list = info.getTagList("items", 10);
 				NBTTagCompound output = null;
 				for(int i = 0;i<list.tagCount();i++){
