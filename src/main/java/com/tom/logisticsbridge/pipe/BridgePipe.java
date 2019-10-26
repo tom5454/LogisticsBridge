@@ -90,16 +90,28 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 	static {
 		try {
 			Method m = RequestTreeNode.class.getDeclaredMethod("recurseFailedRequestTree");
+			m.setAccessible(true);
 			Field srf = RequestTreeNode.class.getDeclaredField("subRequests");
 			Field ef = RequestTreeNode.class.getDeclaredField("extrapromises");
 			Constructor<MethodHandles.Lookup> lookupCons = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class);
 			lookupCons.setAccessible(true);
 			MethodHandles.Lookup lookup = lookupCons.newInstance(RequestTreeNode.class);
-			Method imc = Consumer.class.getDeclaredMethods()[0];
-			MethodType imct = MethodType.methodType(imc.getReturnType(), imc.getParameterTypes());
+			MethodType imct = MethodType.methodType(void.class, Object.class);
 			MethodHandle mh = lookup.unreflect(m);
-			recurseFailedRequestTree = (Consumer<RequestTreeNode>) LambdaMetafactory.metafactory(lookup, "accept",
-					MethodType.methodType(Consumer.class), imct, mh, mh.type()).getTarget().invoke();
+			try {
+				recurseFailedRequestTree = (Consumer<RequestTreeNode>) LambdaMetafactory.metafactory(lookup, "accept",
+						MethodType.methodType(Consumer.class), imct, mh, mh.type()).getTarget().invoke();
+			} catch(Exception e){
+				e.printStackTrace();
+				recurseFailedRequestTree = rtn -> {
+					try {
+						m.invoke(rtn);
+					} catch (Exception e2) {
+						e2.printStackTrace();
+						return;
+					}
+				};
+			}
 			MethodHandle srm = lookup.unreflectGetter(srf);
 			MethodHandle em = lookup.unreflectGetter(ef);
 			subRequests = t -> {

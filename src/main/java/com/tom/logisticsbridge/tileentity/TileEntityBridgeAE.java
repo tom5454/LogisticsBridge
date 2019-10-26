@@ -198,7 +198,9 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	public void craftStack(ItemStack stack, int count, boolean simulate){
 		if(this.getProxy().getNode() == null)return;
 		ICraftingGrid g = this.getProxy().getNode().getGrid().getCache(ICraftingGrid.class);
-		g.beginCraftingJob(world, this.getProxy().getNode().getGrid(), this, ITEMS.createStack(stack), this);
+		IAEItemStack aestack = ITEMS.createStack(stack);
+		aestack.setStackSize(count);
+		g.beginCraftingJob(world, this.getProxy().getNode().getGrid(), this, aestack, this);
 		return;
 	}
 
@@ -565,7 +567,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 			text.appendText(String.format("  %1$tH %1$tM,%1$tS ago\n", ago));
 		}
 		if(dynInv.getSizeInventory() > 0){
-			text.appendText("Stored items:\n");
+			text.appendText("\nStored items:\n");
 			for (int i = 0; i < dynInv.getSizeInventory(); i++) {
 				ItemStack is = dynInv.getStackInSlot(i);
 				text.appendText("    ");
