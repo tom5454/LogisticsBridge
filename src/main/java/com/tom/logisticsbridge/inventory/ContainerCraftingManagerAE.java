@@ -53,4 +53,9 @@ public class ContainerCraftingManagerAE extends Container {
 			addSlotToContainer(new Slot(playerInventory, i, x + i * 18, y + 58));
 		}
 	}
+
+	@Override
+	public ItemStack transferStackInSlot(EntityPlayer playerIn, int index) {
+		return ItemStack.EMPTY;
+	}
 }

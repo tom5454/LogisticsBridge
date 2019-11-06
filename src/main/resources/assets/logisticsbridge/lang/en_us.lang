@@ -1,7 +1,9 @@
 item.logisticspipes.pipe_lb.bridgepipe.name=Bridge Pipe
 item.logisticspipes.pipe_lb.bridgepipe.tip1=Type: Bridge
 item.logisticspipes.pipe_lb.bridgepipe.tip2= - Attaches to an %cYELLOW AE Bridge %cRESET %cGRAY.
-item.logisticspipes.pipe_lb.bridgepipe.tip3= - Creates a bridge between AE and LP.
+item.logisticspipes.pipe_lb.bridgepipe.tip3= - Creates a bridge between AE or RS, and LP.
+item.logisticspipes.pipe_lb.bridgepipe.tip4= - Use a wrench to toggle default route mode.
+item.logisticspipes.pipe_lb.bridgepipe.tip5=    This also enables the advanced bridging logic.
 
 item.logisticspipes.pipe_lb.craftingmanager.name=Crafting Manager
 item.logisticspipes.pipe_lb.craftingmanager.tip1=Type: AutoCrafting
@@ -28,6 +30,7 @@ item.appliedenergistics2.multi_part.satellite_bus.name=Satellite Bus
 tile.lb.bridge.name=AE Bridge
 tile.lb.bridge.rs.name=RS Bridge
 tile.lb.crafting_managerAE.name=Crafting Manager
+tile.lb.satellite_rs.name=Satellite Bus
 
 tooltip.logisticsbridge.fakeItemNull=Auto Craft token
 tooltip.logisticsbridge.request=Requests %s from Logistics Pipes Network

@@ -5,10 +5,12 @@ import java.io.IOException;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.RenderItem;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.ClickType;
@@ -202,6 +204,12 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 			return;
 		}
 	}
+	public RenderItem renderItem() {
+		return itemRender;
+	}
+	public FontRenderer fontRenderer() {
+		return fontRenderer;
+	}
 	public class ConfigExtention extends GuiExtention {
 		private final String name;
 		private final ItemStack stack;
@@ -230,13 +238,13 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 				GL11.glEnable(GL11.GL_LIGHTING);
 				GL11.glEnable(GL11.GL_DEPTH_TEST);
 				RenderHelper.enableGUIStandardItemLighting();
-				itemRender.renderItemAndEffectIntoGUI(stack, left + 5, top + 5);
-				itemRender.renderItemOverlayIntoGUI(fontRenderer, stack, left + 5, top + 5, "");
+				renderItem().renderItemAndEffectIntoGUI(stack, left + 5, top + 5);
+				renderItem().renderItemOverlayIntoGUI(fontRenderer(), stack, left + 5, top + 5, "");
 				GL11.glDisable(GL11.GL_LIGHTING);
 				GL11.glDisable(GL11.GL_DEPTH_TEST);
-				itemRender.zLevel = 0.0F;
+				renderItem().zLevel = 0.0F;
 			} else {
-				fontRenderer.drawString(name, left + 9, top + 8, 0x404040);
+				fontRenderer().drawString(name, left + 9, top + 8, 0x404040);
 				if (pid == null || pid.isEmpty()) {
 					mc.fontRenderer.drawString(StringUtils.translate("gui.craftingManager.noConnection"), left + 40, top + 22, 0x404040);
 				} else {
