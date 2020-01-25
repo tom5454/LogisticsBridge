@@ -31,6 +31,7 @@ tile.lb.bridge.name=AE Bridge
 tile.lb.bridge.rs.name=RS Bridge
 tile.lb.crafting_managerAE.name=Crafting Manager
 tile.lb.satellite_rs.name=Satellite Bus
+tile.lb.craftingmanager.rs.name=Crafting Manager
 
 tooltip.logisticsbridge.fakeItemNull=Auto Craft token
 tooltip.logisticsbridge.request=Requests %s from Logistics Pipes Network

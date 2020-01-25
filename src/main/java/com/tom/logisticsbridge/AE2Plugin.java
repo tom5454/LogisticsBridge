@@ -229,7 +229,7 @@ public class AE2Plugin {
 	}
 	public static void registerBlock(Block block){
 		block.setCreativeTab(CreativeTab.instance);
-		LogisticsBridge.registerBlock(block, () -> new AEBaseItemBlock(block));
+		LogisticsBridge.registerBlock(block, AEBaseItemBlock::new);
 	}
 	public static void preInit(){
 		virtualPattern = new VirtualPatternAE();

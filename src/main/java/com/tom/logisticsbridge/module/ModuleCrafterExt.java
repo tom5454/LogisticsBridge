@@ -217,8 +217,8 @@ public class ModuleCrafterExt extends ModuleCrafter {
 		}
 		int remaining = 0;
 		for (LogisticsItemOrder extra : _service.getItemOrderManager()) {
-			if(extra.getType() == ResourceType.EXTRA) {
-				if (extra.getResource().getItem().equals(requestedItem)) {
+			if (extra.getType() == ResourceType.EXTRA) {
+				if (extra.getResource().getItem().equals(requestedItem.getAsItem())) {
 					remaining += extra.getResource().stack.getStackSize();
 				}
 			}

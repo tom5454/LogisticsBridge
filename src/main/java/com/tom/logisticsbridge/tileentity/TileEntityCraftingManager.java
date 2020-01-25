@@ -7,13 +7,17 @@ import java.util.List;
 import java.util.ListIterator;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.IInventoryChangedListener;
 import net.minecraft.inventory.InventoryBasic;
 import net.minecraft.inventory.InventoryCrafting;
+import net.minecraft.inventory.Slot;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ITickable;
+import net.minecraft.util.math.BlockPos;
 
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.wrapper.InvWrapper;
@@ -52,7 +56,8 @@ import logisticspipes.network.PacketHandler;
 import logisticspipes.network.abstractpackets.ModernPacket;
 import logisticspipes.proxy.MainProxy;
 
-public class TileEntityCraftingManager extends AENetworkInvTile implements ITickable, ICraftingProvider, IIdPipe, IInventoryChangedListener {
+public class TileEntityCraftingManager extends AENetworkInvTile implements ITickable, ICraftingProvider,
+IIdPipe, IInventoryChangedListener, ICraftingManager {
 	private static final IItemStorageChannel ITEMS = AE2Plugin.INSTANCE.api.storage().getStorageChannel(IItemStorageChannel.class);
 	private int priority;
 	private List<ICraftingPatternDetails> craftingList = null;
@@ -86,7 +91,7 @@ public class TileEntityCraftingManager extends AENetworkInvTile implements ITick
 		if(bus == null)return false;
 		for (int i = 0;i < table.getSizeInventory();i++) {
 			ItemStack is = table.getStackInSlot(i);
-			if(!is.isEmpty() && is.getItem() == LogisticsBridge.packageItem && is.hasTagCompound()){
+			if(!is.isEmpty() && is.getItem() == LogisticsBridge.packageItem && is.hasTagCompound() && is.getTagCompound().getBoolean("__actStack")){
 				ItemStack pkgItem = new ItemStack(is.getTagCompound());
 				String id = is.getTagCompound().getString("__pkgDest");
 				PartSatelliteBus b = find(id);
@@ -135,47 +140,6 @@ public class TileEntityCraftingManager extends AENetworkInvTile implements ITick
 		}
 	}
 
-	/*@Override
-	public void setNextId(EntityPlayer player, int id) {
-		if (MainProxy.isClient(player.world)) {
-			final CoordinatesPacket packet = PacketHandler.getPacket(SetIDPacket.class).setInc(true).setId(0).setTilePos(this);
-			MainProxy.sendPacketToServer(packet);
-		} else {
-			supplyID = getNextConnectSatelliteId(false);
-			final CoordinatesPacket packet = PacketHandler.getPacket(ResultPipeID.class).setPipeID(supplyID).setId(0).setTilePos(this);
-			MainProxy.sendPacketToPlayer(packet, player);
-		}
-	}
-
-	@Override
-	public void setPrevId(EntityPlayer player, int id) {
-		if (MainProxy.isClient(player.world)) {
-			final CoordinatesPacket packet = PacketHandler.getPacket(SetIDPacket.class).setInc(false).setId(0).setTilePos(this);
-			MainProxy.sendPacketToServer(packet);
-		} else {
-			supplyID = getNextConnectSatelliteId(true);
-			final CoordinatesPacket packet = PacketHandler.getPacket(ResultPipeID.class).setPipeID(supplyID).setId(0).setTilePos(this);
-			MainProxy.sendPacketToPlayer(packet, player);
-		}
-	}*/
-	/*protected int getNextConnectSatelliteId(boolean prev) {
-		int closestIdFound = prev ? 0 : Integer.MAX_VALUE;
-		for (final IGridNode node : getNode().getGrid().getMachines(PartSatelliteBus.class)) {
-			IGridHost h = node.getMachine();
-			if(h instanceof PartSatelliteBus){
-				PartSatelliteBus satellite = (PartSatelliteBus) h;
-				if (!prev && satellite.satelliteId > supplyID && satellite.satelliteId < closestIdFound) {
-					closestIdFound = satellite.satelliteId;
-				} else if (prev && satellite.satelliteId < supplyID && satellite.satelliteId > closestIdFound) {
-					closestIdFound = satellite.satelliteId;
-				}
-			}
-		}
-		if (closestIdFound == Integer.MAX_VALUE) {
-			return supplyID;
-		}
-		return closestIdFound;
-	}*/
 	@Override
 	public String getPipeID(int id) {
 		return supplyID;
@@ -417,5 +381,35 @@ public class TileEntityCraftingManager extends AENetworkInvTile implements ITick
 		playerIn.openGui(LogisticsBridge.modInstance, GuiIDs.CraftingManager.ordinal(), world, pos.getX(), pos.getY(), pos.getZ());
 		ModernPacket packet = PacketHandler.getPacket(SetIDPacket.class).setName(supplyID).setId(0).setPosX(pos.getX()).setPosY(pos.getY()).setPosZ(pos.getZ());
 		MainProxy.sendPacketToPlayer(packet, playerIn);
+	}
+
+	@Override
+	public ItemStack satelliteDisplayStack() {
+		return AE2Plugin.SATELLITE_BUS_SRC.stack(1);
+	}
+
+	@Override
+	public Slot createGuiSlot(int i, int x, int y) {
+		return new SlotEncPattern(i, x, y);
+	}
+
+	private class SlotEncPattern extends Slot {
+		private final Item pattern = AE2Plugin.INSTANCE.api.definitions().items().encodedPattern().maybeItem().orElse(Items.AIR);
+		public SlotEncPattern(int index, int xPosition, int yPosition) {
+			super(inv, index, xPosition, yPosition);
+		}
+		@Override
+		public int getSlotStackLimit() {
+			return 1;
+		}
+		@Override
+		public boolean isItemValid(ItemStack stack) {
+			return stack.getItem() == pattern;
+		}
+	}
+
+	@Override
+	public BlockPos getPosition() {
+		return pos;
 	}
 }

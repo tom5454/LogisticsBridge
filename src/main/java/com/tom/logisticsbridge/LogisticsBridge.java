@@ -6,7 +6,6 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -80,7 +79,7 @@ dependencies = LogisticsBridge.DEPS, updateJSON = LogisticsBridge.UPDATE)
 public class LogisticsBridge {
 	public static final String ID = "logisticsbridge";
 	public static final String NAME = "Logistics Bridge";
-	public static final String VERSION = "1.2.4";
+	public static final String VERSION = "1.3.0";
 	public static final String DEPS = "after:appliedenergistics2;after:refinedstorage@[1.6.15,);required-after:logisticspipes@[0.10.2.211,)";
 	public static final String UPDATE = "https://github.com/tom5454/LogisticsBridge/blob/master/version-check.json";
 	public static final Logger log = LogManager.getLogger(NAME);
@@ -289,17 +288,17 @@ public class LogisticsBridge {
 		}
 	}
 	public static void registerItem(Item item, boolean registerRenderer){
-		item.setRegistryName(item.getUnlocalizedName().substring(5));
+		if(item.getRegistryName() == null)item.setRegistryName(item.getUnlocalizedName().substring(5));
 		ForgeRegistries.ITEMS.register(item);
 		if(registerRenderer)proxy.addRenderer(item);
 	}
 
 	public static void registerBlock(Block block){
-		registerBlock(block, () -> new ItemBlock(block));
+		registerBlock(block, ItemBlock::new);
 	}
-	public static void registerBlock(Block block, Supplier<Item> itemBlock){
+	public static <T extends Block> void registerBlock(T block, Function<T, Item> itemBlock){
 		registerOnlyBlock(block);
-		registerItem(itemBlock.get(), true);
+		registerItem(itemBlock.apply(block), true);
 	}
 	public static void registerOnlyBlock(Block block){
 		if(block.getRegistryName() == null)

@@ -10,16 +10,16 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.common.network.IGuiHandler;
 
 import com.tom.logisticsbridge.gui.GuiCraftingManager;
-import com.tom.logisticsbridge.gui.GuiCraftingManagerAE;
+import com.tom.logisticsbridge.gui.GuiCraftingManagerU;
 import com.tom.logisticsbridge.gui.GuiPackage;
 import com.tom.logisticsbridge.gui.GuiResultPipe;
 import com.tom.logisticsbridge.inventory.ContainerCraftingManager;
-import com.tom.logisticsbridge.inventory.ContainerCraftingManagerAE;
+import com.tom.logisticsbridge.inventory.ContainerCraftingManagerU;
 import com.tom.logisticsbridge.inventory.ContainerPackage;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
 import com.tom.logisticsbridge.part.PartSatelliteBus;
 import com.tom.logisticsbridge.pipe.CraftingManager;
-import com.tom.logisticsbridge.tileentity.TileEntityCraftingManager;
+import com.tom.logisticsbridge.tileentity.ICraftingManager;
 
 import appeng.api.parts.IPart;
 import appeng.api.parts.IPartHost;
@@ -73,8 +73,8 @@ public class GuiHandler implements IGuiHandler {
 				return new ContainerCraftingManager(player, (CraftingManager) pipe, true);
 			}else{
 				TileEntity tile = world.getTileEntity(new BlockPos(x, y, z));
-				if(tile instanceof TileEntityCraftingManager){
-					return new ContainerCraftingManagerAE(player, (TileEntityCraftingManager) tile);
+				if(tile instanceof ICraftingManager){
+					return new ContainerCraftingManagerU(player, (ICraftingManager) tile);
 				}
 			}
 		}
@@ -129,8 +129,8 @@ public class GuiHandler implements IGuiHandler {
 				return new GuiCraftingManager(player, (CraftingManager) pipe);
 			}else{
 				TileEntity tile = world.getTileEntity(new BlockPos(x, y, z));
-				if(tile instanceof TileEntityCraftingManager){
-					return new GuiCraftingManagerAE(player, (TileEntityCraftingManager) tile);
+				if(tile instanceof ICraftingManager){
+					return new GuiCraftingManagerU(player, (ICraftingManager) tile);
 				}
 			}
 		}

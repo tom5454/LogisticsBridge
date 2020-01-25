@@ -60,6 +60,7 @@ public class VirtualPatternRS extends Item implements ICraftingPatternProvider {
 		NBTTagCompound ot = new NBTTagCompound();
 		ot.setTag("in", input.writeToNBT(new NBTTagCompound()));
 		ot.setTag("out", output.writeToNBT(new NBTTagCompound()));
+		ot.setBoolean("_writing", true);
 		return CACHE.computeIfAbsent(ot, n -> VirtualPatternRS.create(n, container));
 	}
 	public static ICraftingPattern create(ItemStack output, IDynamicPatternDetailsRS handler, ICraftingPatternContainer container){
@@ -73,13 +74,14 @@ public class VirtualPatternRS extends Item implements ICraftingPatternProvider {
 		ot.removeTag(DYNAMIC_PATTERN_ID);
 		NBTTagCompound in = ot.getCompoundTag("in");
 		NBTTagCompound out = ot.getCompoundTag("out");
+		NBTTagCompound oldOt = ot;
 		if(!out.hasNoTags())ot = out;
 		is.setTagCompound(new NBTTagCompound());
 		NBTTagCompound tag = is.getTagCompound();
 		tag.setTag("out", ot);
 		NBTTagList list = new NBTTagList();
 		tag.setTag("in", list);
-		if(!in.hasNoTags() && Item.getByNameOrId(in.getString("id")) == LogisticsBridge.logisticsFakeItem)tag.setBoolean("writer", true);
+		if(oldOt.getBoolean("_writing"))tag.setBoolean("writer", true);
 		if(in.hasNoTags())
 			list.appendTag(LogisticsBridge.fakeStack(ot, 1).writeToNBT(new NBTTagCompound()));
 		else

@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
@@ -14,19 +15,25 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+
 import com.raoulvdberge.refinedstorage.block.BlockCable;
 import com.raoulvdberge.refinedstorage.block.info.BlockDirection;
 import com.raoulvdberge.refinedstorage.block.info.BlockInfoBuilder;
+import com.raoulvdberge.refinedstorage.render.IModelRegistration;
 import com.raoulvdberge.refinedstorage.render.collision.CollisionGroup;
 import com.raoulvdberge.refinedstorage.render.constants.ConstantsCable;
 import com.raoulvdberge.refinedstorage.render.constants.ConstantsExternalStorage;
+import com.raoulvdberge.refinedstorage.render.model.baked.BakedModelCableCover;
 
+import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.tileentity.TileEntitySatelliteBus;
 
 public class BlockSatelliteBus extends BlockCable {
 	public BlockSatelliteBus() {
-		super(BlockInfoBuilder.forId("lb.satellite_rs").
-				material(Material.GLASS).soundType(SoundType.GLASS).
+		super(BlockInfoBuilder.forMod(LogisticsBridge.modInstance, LogisticsBridge.ID,
+				"lb.satellite_rs").material(Material.GLASS).soundType(SoundType.GLASS).
 				hardness(0.35F).tileEntity(TileEntitySatelliteBus::new).create());
 	}
 
@@ -34,6 +41,13 @@ public class BlockSatelliteBus extends BlockCable {
 	@Nullable
 	public BlockDirection getDirection() {
 		return BlockDirection.ANY;
+	}
+
+	@Override
+	@SideOnly(Side.CLIENT)
+	public void registerModels(IModelRegistration modelRegistration) {
+		modelRegistration.setModel(this, 0, new ModelResourceLocation(info.getId(), "direction=north,down=false,east=true,north=false,south=false,up=false,west=true"));
+		modelRegistration.addBakedModelOverride(info.getId(), BakedModelCableCover::new);
 	}
 
 	@Override
@@ -76,13 +90,12 @@ public class BlockSatelliteBus extends BlockCable {
 			return false;
 		}
 
-		if(!world.isRemote){
+		return openNetworkGui(player, world, pos, side, () -> {
 			TileEntity te = world.getTileEntity(pos);
-			if(te instanceof TileEntitySatelliteBus){
+			if(te instanceof TileEntitySatelliteBus) {
 				((TileEntitySatelliteBus)te).openGui(player, hand);
 			}
-		}
-		return true;
+		});
 	}
 
 	@Override

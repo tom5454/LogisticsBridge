@@ -16,22 +16,21 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 
-import com.tom.logisticsbridge.AE2Plugin;
 import com.tom.logisticsbridge.LogisticsBridge;
-import com.tom.logisticsbridge.inventory.ContainerCraftingManagerAE;
-import com.tom.logisticsbridge.tileentity.TileEntityCraftingManager;
+import com.tom.logisticsbridge.inventory.ContainerCraftingManagerU;
+import com.tom.logisticsbridge.tileentity.ICraftingManager;
 
 import logisticspipes.utils.gui.LogisticsBaseGuiScreen;
 import logisticspipes.utils.gui.SmallGuiButton;
 import logisticspipes.utils.gui.extention.GuiExtention;
 import logisticspipes.utils.string.StringUtils;
 
-public class GuiCraftingManagerAE extends LogisticsBaseGuiScreen {
+public class GuiCraftingManagerU extends LogisticsBaseGuiScreen {
 	private static final ResourceLocation BG = new ResourceLocation(LogisticsBridge.ID, "textures/gui/crafting_manager.png");
 	private EntityPlayer player;
-	private TileEntityCraftingManager pipe;
-	public GuiCraftingManagerAE(EntityPlayer player, TileEntityCraftingManager pipe) {
-		super(new ContainerCraftingManagerAE(player, pipe));
+	private ICraftingManager pipe;
+	public GuiCraftingManagerU(EntityPlayer player, ICraftingManager pipe) {
+		super(new ContainerCraftingManagerU(player, pipe));
 		this.player = player;
 		this.pipe = pipe;
 		ySize++;
@@ -60,7 +59,7 @@ public class GuiCraftingManagerAE extends LogisticsBaseGuiScreen {
 	public void initGui() {
 		super.initGui();//120 155
 		extentionControllerLeft.clear();
-		ConfigExtention ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.satellite"), AE2Plugin.SATELLITE_BUS_SRC.stack(1), 0);
+		ConfigExtention ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.satellite"), pipe.satelliteDisplayStack(), 0);
 		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 45, guiTop + 25, 40, 10, StringUtils.translate("gui.crafting.Select")))));
 		extentionControllerLeft.addExtention(ce);
 	}
@@ -73,7 +72,7 @@ public class GuiCraftingManagerAE extends LogisticsBaseGuiScreen {
 		}
 	}
 	private void openSubGuiForSatelliteSelection(int id) {
-		this.setSubGui(new GuiSelectIDPopup(pipe.getPos(), id, 0, uuid -> pipe.setPipeID(id, uuid, null)));
+		this.setSubGui(new GuiSelectIDPopup(pipe.getPosition(), id, 0, uuid -> pipe.setPipeID(id, uuid, null)));
 	}
 	public RenderItem renderItem() {
 		return itemRender;

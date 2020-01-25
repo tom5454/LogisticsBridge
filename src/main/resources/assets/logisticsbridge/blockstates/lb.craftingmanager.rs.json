@@ -1,0 +1,6 @@
+{
+	"variants": {
+		"connected=false": { "model": "logisticsbridge:crafting_manager_rs_off"},
+		"connected=true":  { "model": "logisticsbridge:crafting_manager_rs_on"}
+	}
+}

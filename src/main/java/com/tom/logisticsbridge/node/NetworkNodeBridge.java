@@ -30,6 +30,7 @@ import com.raoulvdberge.refinedstorage.api.autocrafting.ICraftingPattern;
 import com.raoulvdberge.refinedstorage.api.autocrafting.ICraftingPatternContainer;
 import com.raoulvdberge.refinedstorage.api.autocrafting.task.ICraftingTask;
 import com.raoulvdberge.refinedstorage.api.autocrafting.task.ICraftingTaskError;
+import com.raoulvdberge.refinedstorage.api.network.INetwork;
 import com.raoulvdberge.refinedstorage.api.storage.AccessType;
 import com.raoulvdberge.refinedstorage.api.storage.IStorage;
 import com.raoulvdberge.refinedstorage.api.storage.IStorageProvider;
@@ -294,15 +295,11 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 
 	@Override public IFluidHandler getConnectedFluidInventory() {return null;}
 	@Override public TileEntity getConnectedTile() {return null;}
+	@Override public IItemHandlerModifiable getPatternInventory() {return null;}
 
 	@Override
 	public List<ICraftingPattern> getPatterns() {
 		return craftingPatterns;
-	}
-
-	@Override
-	public IItemHandlerModifiable getPatternInventory() {
-		return null;
 	}
 
 	@Override
@@ -426,5 +423,21 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 		if(res.isEmpty())return false;
 		if(!simulate)requestList.add(res);
 		return true;
+	}
+
+	@Override
+	protected void onConnectedStateChange(INetwork network, boolean state) {
+		super.onConnectedStateChange(network, state);
+
+		network.getCraftingManager().rebuild();
+	}
+
+	@Override
+	public void onDisconnected(INetwork network) {
+		super.onDisconnected(network);
+
+		network.getCraftingManager().getTasks().stream()
+		.filter(task -> task.getPattern().getContainer().getPosition().equals(pos))
+		.forEach(task -> network.getCraftingManager().cancel(task.getId()));
 	}
 }
