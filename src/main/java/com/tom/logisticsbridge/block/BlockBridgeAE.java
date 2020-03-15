@@ -35,7 +35,7 @@ public class BlockBridgeAE extends AEBaseTileBlock {
 			EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
 		if(!worldIn.isRemote){
 			TileEntityBridgeAE b = (TileEntityBridgeAE) worldIn.getTileEntity(pos);
-			b.infoMessage(playerIn);
+			b.blockClicked(playerIn);
 		}
 		return true;
 	}

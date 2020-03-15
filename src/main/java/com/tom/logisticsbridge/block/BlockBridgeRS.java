@@ -34,7 +34,7 @@ public class BlockBridgeRS extends BlockNode {
 			EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
 		if(!worldIn.isRemote){
 			TileEntityBridgeRS b = (TileEntityBridgeRS) worldIn.getTileEntity(pos);
-			b.infoMessage(playerIn);
+			b.blockClicked(playerIn);
 		}
 		return true;
 	}

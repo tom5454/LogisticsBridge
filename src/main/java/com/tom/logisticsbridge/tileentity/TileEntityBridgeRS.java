@@ -82,7 +82,7 @@ public class TileEntityBridgeRS extends TileNode<NetworkNodeBridge> implements I
 		return getNode().getOutputs(res, def);
 	}
 
-	public void infoMessage(EntityPlayer playerIn) {
-		getNode().infoMessage(playerIn);
+	public void blockClicked(EntityPlayer playerIn) {
+		getNode().blockClicked(playerIn);
 	}
 }

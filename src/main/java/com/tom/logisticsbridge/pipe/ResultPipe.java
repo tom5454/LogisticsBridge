@@ -196,11 +196,15 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 				cacheAreAllOrderesToBuffer();
 			}
 			if (getItemOrderManager().isFirstOrderWatched()) {
-				TileEntity tile = lastAccessedCrafter.get();
-				if (tile != null) {
-					getItemOrderManager().setMachineProgress(SimpleServiceLocator.machineProgressProvider.getProgressForTile(tile));
-				} else {
+				if(lastAccessedCrafter == null) {
 					getItemOrderManager().setMachineProgress((byte) 0);
+				} else {
+					TileEntity tile = lastAccessedCrafter.get();
+					if (tile != null) {
+						getItemOrderManager().setMachineProgress(SimpleServiceLocator.machineProgressProvider.getProgressForTile(tile));
+					} else {
+						getItemOrderManager().setMachineProgress((byte) 0);
+					}
 				}
 			}
 		} else {

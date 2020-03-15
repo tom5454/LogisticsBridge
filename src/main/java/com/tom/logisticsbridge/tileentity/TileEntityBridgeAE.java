@@ -97,6 +97,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	private OpResult lastPush;
 	private long lastPushTime;
 	private boolean disableLP;
+	private boolean bridgeMode;
 
 	public TileEntityBridgeAE() {
 		getProxy().setFlags(GridFlags.REQUIRE_CHANNEL);
@@ -138,7 +139,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 
 	@Override
 	public List<BridgeStack<ItemStack>> getItems(){
-		if(this.getProxy().getNode() == null || disableLP)return Collections.emptyList();
+		if(this.getProxy().getNode() == null || (disableLP && !bridgeMode))return Collections.emptyList();
 		IStorageGrid g = this.getProxy().getNode().getGrid().getCache(IStorageGrid.class);
 		IMEInventoryHandler<IAEItemStack> i = g.getInventory(ITEMS);
 		IItemList<IAEItemStack> items = i.getAvailableItems(ITEMS.createList());
@@ -155,7 +156,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 
 	@Override
 	public long countItem(ItemStack stack, boolean requestable){
-		if(this.getProxy().getNode() == null || disableLP)return 0;
+		if(this.getProxy().getNode() == null || (disableLP && !bridgeMode))return 0;
 		int buffered = 0;
 		for(int i = 0;i<dynInv.getSizeInventory();i++){
 			ItemStack is = dynInv.getStackInSlot(i);
@@ -292,6 +293,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 		}).forEach(lst2::appendTag);
 		dynInv.removeEmpties();
 		compound.setTag("intInventory", LogisticsBridge.saveAllItems(dynInv));
+		compound.setBoolean("bridgeMode", bridgeMode);
 		return super.writeToNBT(compound);
 	}
 	boolean readingFromNBT;
@@ -317,6 +319,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 			int count = tag.getInteger("Count");
 			toCraft.put(new ItemStack(tag), count);
 		}
+		bridgeMode = compound.getBoolean("bridgeMode");
 	}
 
 	@Override
@@ -505,20 +508,22 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 			IAEItemStack resAE = ITEMS.createStack(res);
 			/*if(def != null)
 				for (int i = 0; i < def.length; i++) ret.add(def[i].copy());*/
-			if(def != null)ret.add(resAE.copy());
-			r.extra.forEach(i -> {
-				IAEItemStack is = ITEMS.createStack(i);
-				boolean added = false;
-				for (IAEItemStack e : ret) {
-					if(e.equals(is)) {
-						e.add(is);
-						added = true;
-						break;
+			if(def != null || bridgeMode)ret.add(resAE.copy());
+			if(!bridgeMode) {
+				r.extra.forEach(i -> {
+					IAEItemStack is = ITEMS.createStack(i);
+					boolean added = false;
+					for (IAEItemStack e : ret) {
+						if(e.equals(is)) {
+							e.add(is);
+							added = true;
+							break;
+						}
 					}
-				}
-				if(!added)ret.add(is);
-			});
-			if(def == null){
+					if(!added)ret.add(is);
+				});
+			}
+			if(def == null && !bridgeMode){
 				for (IAEItemStack e : ret) {
 					if(e.equals(resAE)) {
 						res.setCount(((int) e.getStackSize()) + res.getCount());
@@ -549,33 +554,43 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	public String infoString() {
 		StringBuilder b = new StringBuilder();
 		if(disableLP)b.append("  disableLP flag is stuck\n");
+		b.append("Mode: ");
+		b.append(bridgeMode ? "Simple Mode" : "Smart Mode");
+		b.append('\n');
 		if(lastPush != null)b.append("  Missing items:\n");
 		return b.toString();
 	}
 
-	public void infoMessage(EntityPlayer playerIn) {
-		String info = infoString();
-		if(info.isEmpty())info = "  No problems";
-		TextComponentString text = new TextComponentString("AE Bridge\n" + info);
-		if(lastPush != null){
-			for(ItemStack i : lastPush.missing){
-				text.appendText("    ");
-				text.appendSibling(i.getTextComponent());
-				text.appendText(" * " + i.getCount() + "\n");
+	public void blockClicked(EntityPlayer playerIn) {
+		if(playerIn.isSneaking()) {
+			bridgeMode = !bridgeMode;
+			TextComponentString text = new TextComponentString("AE Bridge mode switched to: " +
+					(bridgeMode ? "Simple Mode" : "Smart Mode"));
+			playerIn.sendMessage(text);
+		} else {
+			String info = infoString();
+			if(info.isEmpty())info = "  No problems";
+			TextComponentString text = new TextComponentString("AE Bridge\n" + info);
+			if(lastPush != null){
+				for(ItemStack i : lastPush.missing){
+					text.appendText("    ");
+					text.appendSibling(i.getTextComponent());
+					text.appendText(" * " + i.getCount() + "\n");
+				}
+				long ago = System.currentTimeMillis() - lastPushTime;
+				text.appendText(String.format("  %1$tH %1$tM,%1$tS ago\n", ago));
 			}
-			long ago = System.currentTimeMillis() - lastPushTime;
-			text.appendText(String.format("  %1$tH %1$tM,%1$tS ago\n", ago));
-		}
-		if(dynInv.getSizeInventory() > 0){
-			text.appendText("\nStored items:\n");
-			for (int i = 0; i < dynInv.getSizeInventory(); i++) {
-				ItemStack is = dynInv.getStackInSlot(i);
-				text.appendText("    ");
-				text.appendSibling(is.getTextComponent());
-				text.appendText(" * " + is.getCount() + "\n");
+			if(dynInv.getSizeInventory() > 0){
+				text.appendText("\nStored items:\n");
+				for (int i = 0; i < dynInv.getSizeInventory(); i++) {
+					ItemStack is = dynInv.getStackInSlot(i);
+					text.appendText("    ");
+					text.appendSibling(is.getTextComponent());
+					text.appendText(" * " + is.getCount() + "\n");
+				}
 			}
+			playerIn.sendMessage(text);
 		}
-		playerIn.sendMessage(text);
 	}
 
 	@Override
