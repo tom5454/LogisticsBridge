@@ -8,7 +8,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -47,6 +46,7 @@ import logisticspipes.modules.abstractmodules.LogisticsModule.ModulePositionType
 import logisticspipes.pipefxhandlers.Particles;
 import logisticspipes.pipes.PipeLogisticsChassi.ChassiTargetInformation;
 import logisticspipes.pipes.basic.CoreRoutedPipe;
+import logisticspipes.proxy.MainProxy;
 import logisticspipes.proxy.SimpleServiceLocator;
 import logisticspipes.request.ICraftingTemplate;
 import logisticspipes.request.IExtraPromise;
@@ -62,6 +62,7 @@ import logisticspipes.request.resources.ItemResource;
 import logisticspipes.routing.ExitRoute;
 import logisticspipes.routing.IRouter;
 import logisticspipes.routing.LogisticsPromise;
+import logisticspipes.routing.ServerRouter;
 import logisticspipes.routing.order.IOrderInfoProvider.ResourceType;
 import logisticspipes.routing.order.LinkedLogisticsOrderList;
 import logisticspipes.routing.order.LogisticsItemOrder;
@@ -311,7 +312,11 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		int wanted = Math.min(available, stack.getStackSize());
 		wanted = Math.min(wanted, maxCount);
 		wanted = Math.min(wanted, item.getMaxStackSize());
-		IRouter dRtr = SimpleServiceLocator.routerManager.getRouterUnsafe(destination, false);
+		if (!MainProxy.isServer(getWorld())) {
+			_orderItemManager.sendFailed();
+			return 0;
+		}
+		ServerRouter dRtr = SimpleServiceLocator.routerManager.getServerRouter(destination);
 		if (dRtr == null) {
 			_orderItemManager.sendFailed();
 			return 0;
@@ -686,33 +691,6 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		private SinkReply _sinkReplyDefault;
 
 		@Override
-		public final int getX() {
-			if (slot.isInWorld()) {
-				return _service.getX();
-			} else {
-				return 0;
-			}
-		}
-
-		@Override
-		public final int getY() {
-			if (slot.isInWorld()) {
-				return _service.getY();
-			} else {
-				return -1;
-			}
-		}
-
-		@Override
-		public final int getZ() {
-			if (slot.isInWorld()) {
-				return _service.getZ();
-			} else {
-				return -1 - positionInt;
-			}
-		}
-
-		@Override
 		public void registerPosition(ModulePositionType slot, int positionInt) {
 			super.registerPosition(slot, positionInt);
 			_sinkReply = new SinkReply(FixedPriority.ItemSink, 0, true, false, 1, 0, new ChassiTargetInformation(getPositionInt()));
@@ -745,11 +723,9 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 			return isDefaultRoute;
 		}
 
-		@Override public LogisticsModule getSubModule(int slot) { return null; }
 		@Override public void tick() {}
 		@Override public void readFromNBT(NBTTagCompound nbttagcompound) {}
 		@Override public void writeToNBT(NBTTagCompound nbttagcompound) {}
-		@Override public Collection<ItemIdentifier> getSpecificInterests() { return null; }
 		@Override public boolean interestedInAttachedInventory() { return false; }
 		@Override public boolean interestedInUndamagedID() { return false; }
 		@Override public boolean recievePassive() { return true; }

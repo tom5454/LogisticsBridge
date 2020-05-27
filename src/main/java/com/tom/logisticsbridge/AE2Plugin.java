@@ -308,7 +308,7 @@ public class AE2Plugin {
 
 	public static IIdPipe processReqIDList(EntityPlayer player, RequestIDListPacket pck) {
 		AEPartLocation side = AEPartLocation.fromOrdinal(pck.side - 1);
-		IPartHost ph = pck.getTile(player.world, IPartHost.class);
+		IPartHost ph = pck.getTileAs(player.world, IPartHost.class);
 		if(ph == null)return null;
 		IPart p = ph.getPart(side);
 		if(p instanceof IIdPipe){
@@ -319,7 +319,7 @@ public class AE2Plugin {
 
 	public static void processResIDMod(EntityPlayer player, SetIDPacket pck){
 		AEPartLocation side = AEPartLocation.fromOrdinal(pck.side - 1);
-		IPartHost ph = pck.getTile(player.world, IPartHost.class);
+		IPartHost ph = pck.getTileAs(player.world, IPartHost.class);
 		if(ph == null)return;
 		IPart p = ph.getPart(side);
 		if(p instanceof IIdPipe){

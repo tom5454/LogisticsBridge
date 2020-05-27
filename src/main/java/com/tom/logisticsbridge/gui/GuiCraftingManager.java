@@ -147,7 +147,7 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 				} else if(mouseButton == 1 || mouseButton == 2){
 					if(mouseButton == 1){
 						if(sl.getHasStack()){
-							LogisticsModule module = pipe.getLogisticsModule().getSubModule(sl.slotNumber);
+							LogisticsModule module = pipe.getSubModule(sl.slotNumber);
 							if (module != null) {
 								final ModernPacket packet = PacketHandler.getPacket(ChassisGUI.class).setButtonID(sl.slotNumber).setPosX(pipe.getX()).setPosY(pipe.getY()).setPosZ(pipe.getZ());
 								MainProxy.sendPacketToServer(packet);
@@ -162,7 +162,7 @@ public class GuiCraftingManager extends LogisticsBaseGuiScreen {
 			SlotCraftingCard sl = (SlotCraftingCard) popup.additionalData;
 			if(pr == 0){
 				if(sl.getHasStack()){
-					LogisticsModule module = pipe.getLogisticsModule().getSubModule(sl.slotNumber);
+					LogisticsModule module = pipe.getSubModule(sl.slotNumber);
 					if (module != null) {
 						final ModernPacket packet = PacketHandler.getPacket(ChassisGUI.class).setButtonID(sl.slotNumber).setPosX(pipe.getX()).setPosY(pipe.getY()).setPosZ(pipe.getZ());
 						MainProxy.sendPacketToServer(packet);
