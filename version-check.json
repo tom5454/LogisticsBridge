@@ -5,7 +5,7 @@
     "1.12.2-recommended": "1.3.2"
   },
   "1.12.2": {
-  	"1.3.2": "Fixed crash on world start"
+  	"1.3.2": "Fixed crash on world start",
   	"1.3.1": "Fixed crash with crafting manager pipe\nAdded old  logic mode to bridge block.",
   	"1.3.0": "Added Satellite Bus and Crafting Manager for Refined Storage.\nFew bugfixes.",
   	"1.2.5": "Crash fixes with GUIs.",
