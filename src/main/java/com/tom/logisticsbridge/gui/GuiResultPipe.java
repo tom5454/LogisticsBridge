@@ -2,12 +2,13 @@ package com.tom.logisticsbridge.gui;
 
 import java.io.IOException;
 
+import org.lwjgl.input.Keyboard;
+
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.Container;
 
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
-import org.lwjgl.input.Keyboard;
 
 import logisticspipes.utils.gui.GuiGraphics;
 import logisticspipes.utils.gui.InputBar;

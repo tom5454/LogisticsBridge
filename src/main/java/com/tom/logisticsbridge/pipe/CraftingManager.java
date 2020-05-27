@@ -9,7 +9,8 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
@@ -29,7 +30,6 @@ import com.tom.logisticsbridge.module.BufferUpgrade;
 import com.tom.logisticsbridge.module.ModuleCrafterExt;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
-import org.apache.commons.lang3.tuple.Pair;
 
 import logisticspipes.LPItems;
 import logisticspipes.api.ILPPipeTile;
@@ -261,7 +261,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		}
 	}
 	@Override
-	public void collectSpecificInterests(@Nonnull Collection<ItemIdentifier> itemidCollection) {
+	public void collectSpecificInterests(Collection<ItemIdentifier> itemidCollection) {
 		for (int i = 0; i < getChassiSize(); i++) {
 			LogisticsModule module = getSubModule(i);
 			if (module != null) {
