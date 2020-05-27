@@ -49,7 +49,7 @@ public class RequestIDListPacket extends CoordinatesPacket {
 				}
 				rPipe = (IIdPipe) cpipe;
 			} catch(Exception e){
-				IIdPipe pp = getTile(player.world, IIdPipe.class);
+				IIdPipe pp = getTileAs(player.world, IIdPipe.class);
 				if(pp == null)return;
 				rPipe = pp;
 			}

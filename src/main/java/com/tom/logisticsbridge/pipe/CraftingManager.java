@@ -6,13 +6,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.tuple.Pair;
+import javax.annotation.Nonnull;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
@@ -21,7 +18,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextComponentTranslation;
 
 import net.minecraftforge.fml.client.FMLClientHandler;
@@ -33,6 +29,7 @@ import com.tom.logisticsbridge.module.BufferUpgrade;
 import com.tom.logisticsbridge.module.ModuleCrafterExt;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
+import org.apache.commons.lang3.tuple.Pair;
 
 import logisticspipes.LPItems;
 import logisticspipes.api.ILPPipeTile;
@@ -90,10 +87,6 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		return 27;
 	}
 
-	@Override
-	public ResourceLocation getChassiGUITexture() {
-		return new ResourceLocation("minecraft:textures/items/barrier.png");
-	}
 	@SuppressWarnings("deprecation")
 	@Override
 	public void InventoryChanged(IInventory inventory) {
@@ -268,24 +261,19 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		}
 	}
 	@Override
-	public Set<ItemIdentifier> getSpecificInterests() {
-		Set<ItemIdentifier> l1 = new TreeSet<>();
+	public void collectSpecificInterests(@Nonnull Collection<ItemIdentifier> itemidCollection) {
 		for (int i = 0; i < getChassiSize(); i++) {
-			LogisticsModule module = getModules().getSubModule(i);
+			LogisticsModule module = getSubModule(i);
 			if (module != null) {
-				Collection<ItemIdentifier> current = module.getSpecificInterests();
-				if (current != null) {
-					l1.addAll(current);
-				}
+				module.collectSpecificInterests(itemidCollection);
 			}
 		}
-		return l1;
 	}
 
 	@Override
 	public boolean hasGenericInterests() {
 		for (int i = 0; i < getChassiSize(); i++) {
-			LogisticsModule x = getModules().getSubModule(i);
+			LogisticsModule x = getSubModule(i);
 
 			if (x != null && x.hasGenericInterests()) {
 				return true;

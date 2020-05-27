@@ -65,7 +65,7 @@ public class SetIDPacket extends CoordinatesPacket {
 					((IIdPipe)pipe.pipe).setPipeID(id, pid, player);
 				}
 			} catch (TargetNotFoundException e) {
-				IIdPipe pp = getTile(player.world, IIdPipe.class);
+				IIdPipe pp = getTileAs(player.world, IIdPipe.class);
 				if(pp == null)return;
 				pp.setPipeID(id, pid, player);
 				return;

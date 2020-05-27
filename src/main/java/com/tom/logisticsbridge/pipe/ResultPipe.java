@@ -356,7 +356,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 	}
 	public List<NeighborTileEntity<TileEntity>> locateCrafters() {
 		if (cachedCrafters == null) {
-			cachedCrafters = new WorldCoordinatesWrapper(getWorld(), getX(), getY(), getZ())
+			cachedCrafters = new WorldCoordinatesWrapper(getWorld(), getPos())
 					.connectedTileEntities(ConnectionPipeType.ITEM)
 					.filter(neighbor -> neighbor.isItemHandler() || neighbor.getInventoryUtil() != null)
 					.collect(Collectors.toList());
