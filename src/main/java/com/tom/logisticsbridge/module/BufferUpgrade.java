@@ -2,7 +2,7 @@ package com.tom.logisticsbridge.module;
 
 import com.tom.logisticsbridge.pipe.CraftingManager;
 
-import logisticspipes.modules.abstractmodules.LogisticsModule;
+import logisticspipes.modules.LogisticsModule;
 import logisticspipes.pipes.basic.CoreRoutedPipe;
 import logisticspipes.pipes.upgrades.IPipeUpgrade;
 
