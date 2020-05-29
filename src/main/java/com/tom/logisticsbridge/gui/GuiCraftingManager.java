@@ -29,7 +29,7 @@ import com.tom.logisticsbridge.inventory.ContainerCraftingManager.SlotCraftingCa
 import com.tom.logisticsbridge.pipe.CraftingManager;
 
 import logisticspipes.LPItems;
-import logisticspipes.modules.abstractmodules.LogisticsModule;
+import logisticspipes.modules.LogisticsModule;
 import logisticspipes.network.PacketHandler;
 import logisticspipes.network.abstractpackets.ModernPacket;
 import logisticspipes.network.packets.chassis.ChassisGUI;
