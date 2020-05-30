@@ -1,0 +1,55 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+        maven {
+            name = "forge"
+            url = "https://files.minecraftforge.net/maven"
+        }
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '3.+'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'net.minecraftforge.gradle'
+
+def forge_version = '1.12.2-14.23.5.2854'
+def mappings_version = '20171120-1.12'
+
+minecraft {
+    mappings channel: 'snapshot', version: mappings_version
+}
+
+repositories {
+    jcenter()
+    maven {
+        name = 'JitPack.io'
+        url = 'https://jitpack.io'
+    }
+    maven {
+        name = "forge"
+        url = "https://files.minecraftforge.net/maven"
+    }
+    maven {
+        name "refinedstorage"
+        url = "https://repo.refinedmods.com/"
+    }
+    maven {
+        name = "RS485 Cache"
+        url = "https://www.rs485.network/maven-cache/"
+    }
+}
+
+dependencies {
+    minecraft group: 'net.minecraftforge', name: 'forge', version: forge_version
+    implementation group: 'com.github.RS485', name: 'LogisticsPipes', version: 'dev-mc1122-fg3-SNAPSHOT', classifier: 'deobf'
+    compileOnly group: 'refinedstorage', name: 'refinedstorage', version: '1.6.16-386', transitive: false
+    compileOnly group: 'codechicken', name: 'NotEnoughItems', version: '1.12.2-2.4.3.245', classifier: 'deobf', transitive: false
+    compileOnly group: 'appeng', name: 'appliedenergistics2', version: 'rv6-stable-7', transitive: false
+}
+
+tasks.withType(Wrapper) {
+    version = 4.9
+}
