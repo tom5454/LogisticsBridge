@@ -285,8 +285,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 				itemsleft -= numtosend;
 				ItemStack stackToSend = extracted.splitStack(numtosend);
 				if (nextOrder.getDestination() != null) {
-					SinkReply reply = LogisticsManager.canSink(nextOrder.getDestination().getRouter(), null, true, ItemIdentifier.get(stackToSend), null, true,
-							false);
+					SinkReply reply = LogisticsManager.canSink(stackToSend, nextOrder.getDestination().getRouter(), null, true, ItemIdentifier.get(stackToSend), null, true, false);
 					boolean defersend = false;
 					if (reply == null || reply.bufferMode != BufferMode.NONE || reply.maxNumberOfItems < 1) {
 						defersend = true;
@@ -327,7 +326,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 		boolean result = true;
 		for (LogisticsItemOrder order : getItemOrderManager()) {
 			if (order.getDestination() instanceof IItemSpaceControl) {
-				SinkReply reply = LogisticsManager.canSink(order.getDestination().getRouter(), null, true, order.getResource().getItem(), null, true, false);
+				SinkReply reply = LogisticsManager.canSink(order.getResource().getItemStack().makeNormalStack(), order.getDestination().getRouter(), null, true, order.getResource().getItem(), null, true, false);
 				if (reply != null && reply.bufferMode == BufferMode.NONE && reply.maxNumberOfItems >= 1) {
 					result = false;
 					break;
