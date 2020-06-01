@@ -1,6 +1,5 @@
 package com.tom.logisticsbridge;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -67,7 +66,6 @@ import logisticspipes.blocks.LogisticsProgramCompilerTileEntity.ProgrammCategori
 import logisticspipes.items.ItemLogisticsProgrammer;
 import logisticspipes.items.ItemUpgrade;
 import logisticspipes.pipes.basic.CoreUnroutedPipe;
-import logisticspipes.pipes.basic.LogisticsTileGenericPipe;
 import logisticspipes.recipes.NBTIngredient;
 import logisticspipes.textures.Textures;
 import logisticspipes.textures.Textures.TextureType;
@@ -79,8 +77,8 @@ dependencies = LogisticsBridge.DEPS, updateJSON = LogisticsBridge.UPDATE)
 public class LogisticsBridge {
 	public static final String ID = "logisticsbridge";
 	public static final String NAME = "Logistics Bridge";
-	public static final String VERSION = "1.3.3";
-	public static final String DEPS = "after:appliedenergistics2;after:refinedstorage@[1.6.15,);required-after:logisticspipes@[0.10.3.29,)";
+	public static final String VERSION = "1.3.4";
+	public static final String DEPS = "after:appliedenergistics2;after:refinedstorage@[1.6.15,);required-after:logisticspipes@[0.10.3.31,)";
 	public static final String UPDATE = "https://github.com/tom5454/LogisticsBridge/blob/master/version-check.json";
 	public static final Logger log = LogManager.getLogger(NAME);
 	public static Method registerTexture, registerPipe;
@@ -197,12 +195,6 @@ public class LogisticsBridge {
 		}
 		if(aeLoaded){
 			AE2Plugin.patchSorter();
-		}
-		try {
-			Field pipe = LogisticsTileGenericPipe.class.getDeclaredField("pipe");
-			RequestIDListPacket.pipe = ASMUtil.getfield(pipe);
-		} catch (NoSuchFieldException | SecurityException e) {
-			e.printStackTrace();
 		}
 		NetworkRegistry.INSTANCE.registerGuiHandler(modInstance, new GuiHandler());
 		proxy.init();

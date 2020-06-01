@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -23,7 +22,6 @@ import net.minecraft.util.text.TextComponentTranslation;
 
 import net.minecraftforge.fml.client.FMLClientHandler;
 
-import com.tom.logisticsbridge.ASMUtil;
 import com.tom.logisticsbridge.GuiHandler.GuiIDs;
 import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.module.BufferUpgrade;
@@ -50,7 +48,6 @@ import logisticspipes.network.abstractpackets.ModernPacket;
 import logisticspipes.network.guis.pipe.ChassiGuiProvider;
 import logisticspipes.pipes.PipeItemsSatelliteLogistics;
 import logisticspipes.pipes.PipeLogisticsChassi;
-import logisticspipes.pipes.basic.CoreUnroutedPipe;
 import logisticspipes.proxy.MainProxy;
 import logisticspipes.proxy.SimpleServiceLocator;
 import logisticspipes.security.SecuritySettings;
@@ -63,14 +60,6 @@ import network.rs485.logisticspipes.connection.NeighborTileEntity;
 public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	private List<List<Pair<IRequestItems, ItemIdentifierStack>>> buffered = new ArrayList<>();
 	public static TextureType TEXTURE = Textures.empty;
-	public static Function<CoreUnroutedPipe, ILPPipeTile> getContainer;
-	static {
-		try {
-			getContainer = ASMUtil.<CoreUnroutedPipe, ILPPipeTile>getfield(CoreUnroutedPipe.class.getDeclaredField("container"));
-		} catch (NoSuchFieldException | SecurityException e) {
-			throw new RuntimeException(e);
-		}
-	}
 	public String satelliteId, resultId;
 	private UUID satelliteUUID, resultUUID;
 	public CraftingManager(Item item) {
@@ -194,7 +183,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	}
 
 	private ILPPipeTile getContainerHidden() {
-		return getContainer.apply(this);
+		return container;
 	}
 
 	private boolean tryInsertingModule(EntityPlayer entityplayer) {

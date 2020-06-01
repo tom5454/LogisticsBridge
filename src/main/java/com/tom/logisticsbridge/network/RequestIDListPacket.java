@@ -1,10 +1,6 @@
 package com.tom.logisticsbridge.network;
 
-import java.lang.reflect.Method;
-import java.util.function.Function;
-
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.world.World;
 
 import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
@@ -22,14 +18,7 @@ import network.rs485.logisticspipes.util.LPDataOutput;
 @StaticResolve
 public class RequestIDListPacket extends CoordinatesPacket {
 	public int side, id;
-	public static Function<Object, CoreUnroutedPipe> pipe;
-	public static Method getPipe;
-	static {
-		try {
-			getPipe = CoordinatesPacket.class.getDeclaredMethod("getPipe", World.class, LTGPCompletionCheck.class);
-		} catch (Exception e) {
-		}
-	}
+
 	public RequestIDListPacket(int id) {
 		super(id);
 	}
@@ -41,9 +30,7 @@ public class RequestIDListPacket extends CoordinatesPacket {
 			rPipe = LogisticsBridge.processReqIDList(player, this);
 		}else{
 			try {
-				Object pipe = getPipe.invoke(this, player.getEntityWorld(), LTGPCompletionCheck.PIPE);
-				if (pipe == null)throw new TargetNotFoundException(null, this);
-				CoreUnroutedPipe cpipe = RequestIDListPacket.pipe.apply(pipe);
+				CoreUnroutedPipe cpipe = getPipe(player.getEntityWorld(), LTGPCompletionCheck.PIPE).pipe;
 				if (!(cpipe instanceof IIdPipe)) {
 					throw new TargetNotFoundException(null, this);
 				}
