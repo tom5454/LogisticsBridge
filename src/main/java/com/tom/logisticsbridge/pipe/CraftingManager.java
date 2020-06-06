@@ -30,7 +30,6 @@ import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
 
 import logisticspipes.LPItems;
-import logisticspipes.api.ILPPipeTile;
 import logisticspipes.gui.GuiChassiPipe;
 import logisticspipes.interfaces.IHeadUpDisplayRenderer;
 import logisticspipes.interfaces.IInventoryUtil;
@@ -145,7 +144,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		if (entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND).isEmpty()) {
 			return false;
 		}
-		if(!entityplayer.isSneaking() && SimpleServiceLocator.configToolHandler.canWrench(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), getContainerHidden())){
+		if(!entityplayer.isSneaking() && SimpleServiceLocator.configToolHandler.canWrench(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), container)){
 			if (MainProxy.isServer(getWorld())) {
 				if (settings == null || settings.openGui) {
 					openGui(entityplayer);
@@ -153,10 +152,10 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 					entityplayer.sendMessage(new TextComponentTranslation("lp.chat.permissiondenied"));
 				}
 			}
-			SimpleServiceLocator.configToolHandler.wrenchUsed(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), getContainerHidden());
+			SimpleServiceLocator.configToolHandler.wrenchUsed(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), container);
 			return true;
 		}
-		if (entityplayer.isSneaking() && SimpleServiceLocator.configToolHandler.canWrench(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), getContainerHidden())) {
+		if (entityplayer.isSneaking() && SimpleServiceLocator.configToolHandler.canWrench(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), container)) {
 			if (MainProxy.isServer(getWorld())) {
 				if (settings == null || settings.openGui) {
 					((PipeLogisticsChassi) container.pipe).nextOrientation();
@@ -164,7 +163,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 					entityplayer.sendMessage(new TextComponentTranslation("lp.chat.permissiondenied"));
 				}
 			}
-			SimpleServiceLocator.configToolHandler.wrenchUsed(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), getContainerHidden());
+			SimpleServiceLocator.configToolHandler.wrenchUsed(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), container);
 			return true;
 		}
 
@@ -180,10 +179,6 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		}
 
 		return false;
-	}
-
-	private ILPPipeTile getContainerHidden() {
-		return container;
 	}
 
 	private boolean tryInsertingModule(EntityPlayer entityplayer) {
