@@ -45,6 +45,8 @@ repositories {
 dependencies {
     minecraft group: 'net.minecraftforge', name: 'forge', version: forge_version
     implementation group: 'com.github.RS485', name: 'LogisticsPipes', version: 'dev-mc1122-fg3-SNAPSHOT', classifier: 'deobf', changing: true
+    compileOnly group: 'MCMultiPart2', name: 'MCMultiPart', version: '2.5.3', classifier: 'deobf', transitive: false
+    compileOnly group: 'cofh', name: 'ThermalDynamics', version: '1.12.2-2.5.5.21', classifier: 'deobf', transitive: false
     compileOnly group: 'refinedstorage', name: 'refinedstorage', version: '1.6.16-386', transitive: false
     compileOnly group: 'codechicken', name: 'NotEnoughItems', version: '1.12.2-2.4.3.245', classifier: 'deobf', transitive: false
     compileOnly group: 'appeng', name: 'appliedenergistics2', version: 'rv6-stable-7', transitive: false
