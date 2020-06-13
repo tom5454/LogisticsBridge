@@ -77,7 +77,7 @@ dependencies = LogisticsBridge.DEPS, updateJSON = LogisticsBridge.UPDATE)
 public class LogisticsBridge {
 	public static final String ID = "logisticsbridge";
 	public static final String NAME = "Logistics Bridge";
-	public static final String VERSION = "1.3.4";
+	public static final String VERSION = "1.3.5";
 	public static final String DEPS = "after:appliedenergistics2;after:refinedstorage@[1.6.15,);required-after:logisticspipes@[0.10.3.31,)";
 	public static final String UPDATE = "https://github.com/tom5454/LogisticsBridge/blob/master/version-check.json";
 	public static final Logger log = LogManager.getLogger(NAME);
@@ -147,6 +147,7 @@ public class LogisticsBridge {
 		long time = System.currentTimeMillis() - tM;
 		log.info("Pre Initialization took in " + time + " milliseconds");
 	}
+
 	@SubscribeEvent
 	public void initItems(RegistryEvent.Register<Item> event) {
 		IForgeRegistry<Item> registry = event.getRegistry();
@@ -156,6 +157,7 @@ public class LogisticsBridge {
 		ItemUpgrade.registerUpgrade(registry, "lb.buffer_upgrade", BufferUpgrade::new);
 		log.info("Registered Pipes");
 	}
+
 	@SubscribeEvent
 	public void openGui(PlayerContainerEvent.Open event){
 		if(event.getContainer() instanceof DummyContainer && !(event.getContainer() instanceof ContainerCraftingManager)){
@@ -166,10 +168,12 @@ public class LogisticsBridge {
 			});
 		}
 	}
+
 	@EventHandler
 	public void cleanup(FMLServerStoppingEvent event) {
 		ResultPipe.cleanup();
 	}
+
 	private static void registerPipe(IForgeRegistry<Item> registry, String name, Function<Item, ? extends CoreUnroutedPipe> constructor){
 		try {
 			registerPipe.invoke(LogisticsPipes.instance, registry, name, constructor);
@@ -177,6 +181,7 @@ public class LogisticsBridge {
 			throw new RuntimeException(e);
 		}
 	}
+
 	@SubscribeEvent
 	@SideOnly(Side.CLIENT)
 	public void textureLoad(TextureStitchEvent.Pre event) {
@@ -198,13 +203,21 @@ public class LogisticsBridge {
 		}
 		NetworkRegistry.INSTANCE.registerGuiHandler(modInstance, new GuiHandler());
 		proxy.init();
+		loadRecipes();
 		long time = System.currentTimeMillis() - tM;
 		log.info("Initialization took in " + time + " milliseconds");
 	}
+
 	@EventHandler
 	public static void postInit(FMLPostInitializationEvent evt) {
 		log.info("Start Post Initialization");
 		long tM = System.currentTimeMillis();
+		//loadRecipes();
+		long time = System.currentTimeMillis() - tM;
+		log.info("Post Initialization took in " + time + " milliseconds");
+	}
+
+	private static void loadRecipes() {
 		ResourceLocation bridgePrg = pipeBridge.delegate.name();
 		ResourceLocation resultPrg = pipeResult.delegate.name();
 		ResourceLocation craftingMgrPrg = pipeCraftingManager.delegate.name();
@@ -255,15 +268,15 @@ public class LogisticsBridge {
 				'i', "gemDiamond",
 				'P', "paper").
 				setRegistryName(new ResourceLocation(ID, "recipes/buffer_upgrade")));
-		long time = System.currentTimeMillis() - tM;
-		log.info("Post Initialization took in " + time + " milliseconds");
 	}
+
 	private static Ingredient getIngredientForProgrammer(ResourceLocation rl) {
 		ItemStack programmerStack = new ItemStack(LPItems.logisticsProgrammer);
 		programmerStack.setTagCompound(new NBTTagCompound());
 		programmerStack.getTagCompound().setString(ItemLogisticsProgrammer.RECIPE_TARGET, rl.toString());
 		return NBTIngredient.fromStacks(programmerStack);
 	}
+
 	public static void registerTextures(Object object) {
 		BridgePipe.TEXTURE = registerTexture(object, "pipes/lb/bridge");
 		ResultPipe.TEXTURE = registerTexture(object, "pipes/lb/result");
@@ -272,6 +285,7 @@ public class LogisticsBridge {
 	private static TextureType registerTexture(Object par1IIconRegister, String fileName) {
 		return registerTexture(par1IIconRegister, fileName, 1);
 	}
+
 	private static TextureType registerTexture(Object reg, String fileName, int flag){
 		try {
 			return (TextureType) registerTexture.invoke(LogisticsPipes.textures, reg, fileName, flag);
@@ -279,6 +293,7 @@ public class LogisticsBridge {
 			throw new RuntimeException(e);
 		}
 	}
+
 	public static void registerItem(Item item, boolean registerRenderer){
 		if(item.getRegistryName() == null)item.setRegistryName(item.getUnlocalizedName().substring(5));
 		ForgeRegistries.ITEMS.register(item);
@@ -288,28 +303,34 @@ public class LogisticsBridge {
 	public static void registerBlock(Block block){
 		registerBlock(block, ItemBlock::new);
 	}
+
 	public static <T extends Block> void registerBlock(T block, Function<T, Item> itemBlock){
 		registerOnlyBlock(block);
 		registerItem(itemBlock.apply(block), true);
 	}
+
 	public static void registerOnlyBlock(Block block){
 		if(block.getRegistryName() == null)
 			block.setRegistryName(block.getUnlocalizedName().substring(5));
 		ForgeRegistries.BLOCKS.register(block);
 	}
+
 	public static ItemStack fakeStack(int count){
 		return new ItemStack(logisticsFakeItem, count);
 	}
+
 	public static ItemStack fakeStack(ItemStack stack, int count){
 		ItemStack is = new ItemStack(logisticsFakeItem, count);
 		if(stack != null && !stack.isEmpty())is.setTagCompound(stack.writeToNBT(new NBTTagCompound()));
 		return is;
 	}
+
 	public static ItemStack fakeStack(NBTTagCompound stack, int count){
 		ItemStack is = new ItemStack(logisticsFakeItem, count);
 		if(stack != null && !stack.hasNoTags())is.setTagCompound(stack);
 		return is;
 	}
+
 	public static ItemStack packageStack(ItemStack stack, int count, String id, boolean actStack){
 		ItemStack is = new ItemStack(packageItem, count);
 		if(stack != null && !stack.isEmpty())is.setTagCompound(stack.writeToNBT(new NBTTagCompound()));
@@ -345,6 +366,7 @@ public class LogisticsBridge {
 			}
 		}
 	}
+
 	@SuppressWarnings("unchecked")
 	public static void processResIDMod(EntityPlayer player, SetIDPacket pck){
 		if(pck.side == -1){
