@@ -195,7 +195,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		return false;
 	}
 	public static boolean isCraftingModule(ItemStack itemStack){
-		return itemStack.getItem() == LPItems.modules.get(ModuleCrafter.class);
+		return itemStack.getItem() == Item.REGISTRY.getObject(LPItems.modules.get(ModuleCrafter.getName()));
 	}
 	public boolean isUpgradeModule(ItemStack itemStack, int slot){
 		return ChassiGuiProvider.checkStack(itemStack, this, slot);
