@@ -9,8 +9,6 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import net.minecraftforge.fml.common.Optional;
-
 import com.tom.logisticsbridge.tileentity.TileEntityCraftingManager;
 
 import appeng.block.AEBaseTileBlock;
@@ -22,12 +20,6 @@ public class BlockCraftingManager extends AEBaseTileBlock {
 		setHardness(2f);
 		setResistance(4f);
 		setTileEntity(TileEntityCraftingManager.class);
-	}
-
-	@Override
-	@Optional.Method(modid = "")
-	public TileEntity createNewTileEntity(World worldIn, int meta) {
-		return new TileEntityCraftingManager();
 	}
 
 	@Override
