@@ -242,6 +242,9 @@ public class ModuleCrafterExt extends ModuleCrafter {
 	public LogisticsItemOrder fullFill(LogisticsPromise promise, IRequestItems destination, IAdditionalTargetInformation info) {
 		if(!(_service instanceof CraftingManager))return null;
 		CraftingManager mngr = (CraftingManager) _service;
+		ItemIdentifierStack result = getCraftedItem();
+		if(result == null)return null;
+		int multiply = (int) Math.ceil(promise.numberOfItems / (float) result.getStackSize());
 		if(mngr.isBuffered()){
 			List<Pair<IRequestItems, ItemIdentifierStack>> rec = new ArrayList<>();
 			IRouter defSat = getSatelliteRouterByID(mngr.getSatelliteUUID());
@@ -277,7 +280,8 @@ public class ModuleCrafterExt extends ModuleCrafter {
 				if(mat != null)rec.add(Pair.of(target[i], mat));
 			}
 
-			mngr.addBuffered(rec);
+			for(int i = 0;i<multiply;i++)
+				mngr.addBuffered(rec);
 		}
 		IRouter resultR = getResultRouterByID(mngr.getResultUUID());
 		if(resultR == null)return null;
