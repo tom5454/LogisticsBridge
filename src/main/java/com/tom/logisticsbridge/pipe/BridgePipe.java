@@ -25,6 +25,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumFacing.Axis;
 import net.minecraft.util.text.TextComponentTranslation;
 
 import com.tom.logisticsbridge.LogisticsBridge;
@@ -485,14 +486,14 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 				collect(Collectors.toList());
 	}
 	public class Req {
-		private boolean gettingProvItems;
+		private boolean alreadyProcessing;
 		public List<ItemStack> getProvidedItems() {
-			if(gettingProvItems || !isEnabled())return Collections.emptyList();
+			if(alreadyProcessing || !isEnabled())return Collections.emptyList();
 			if (stillNeedReplace()) {
 				return new ArrayList<>();
 			}
 			try {
-				gettingProvItems = true;
+				alreadyProcessing = true;
 				IRouter myRouter = getRouter();
 				List<ExitRoute> exits = new ArrayList<>(myRouter.getIRoutersByCost());
 				exits.removeIf(e -> e.destination == myRouter);
@@ -504,72 +505,82 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 				}
 				return list;
 			} finally {
-				gettingProvItems = false;
+				alreadyProcessing = false;
 			}
 		}
 
 		public List<ItemStack> getCraftedItems() {
-			if(!isEnabled())return Collections.emptyList();
+			if(alreadyProcessing || !isEnabled())return Collections.emptyList();
 			if (stillNeedReplace()) {
 				return new ArrayList<>();
 			}
-			IRouter myRouter = getRouter();
-			List<ExitRoute> exits = new ArrayList<>(myRouter.getIRoutersByCost());
-			exits.removeIf(e -> e.destination == myRouter);
-			LinkedList<ItemIdentifier> items = SimpleServiceLocator.logisticsManager.getCraftableItems(exits);
-			List<ItemStack> list = new ArrayList<>(items.size());
-			for (ItemIdentifier item : items) {
-				ItemStack is = item.unsafeMakeNormalStack(1);
-				list.add(is);
+			try {
+				alreadyProcessing = true;
+				IRouter myRouter = getRouter();
+				List<ExitRoute> exits = new ArrayList<>(myRouter.getIRoutersByCost());
+				exits.removeIf(e -> e.destination == myRouter);
+				LinkedList<ItemIdentifier> items = SimpleServiceLocator.logisticsManager.getCraftableItems(exits);
+				List<ItemStack> list = new ArrayList<>(items.size());
+				for (ItemIdentifier item : items) {
+					ItemStack is = item.unsafeMakeNormalStack(1);
+					list.add(is);
+				}
+				return list;
+			} finally {
+				alreadyProcessing = false;
 			}
-			return list;
 		}
 		/**
 		 * @param craft bits: processExtra,onlyCraft,enableCraft
 		 * */
 		public OpResult simulateRequest(ItemStack wanted, int craft, boolean allowPartial) {
-			if(!isEnabled()){
+			if(!isEnabled() || alreadyProcessing){
 				OpResult r = new OpResult();
 				r.used = Collections.emptyList();
 				r.missing = Collections.singletonList(wanted);
 				return r;
 			}
-			IRouter myRouter = getRouter();
-			List<ExitRoute> exits = new ArrayList<>(myRouter.getIRoutersByCost());
-			exits.removeIf(e -> e.destination == myRouter);
-			Map<ItemIdentifier, Integer> items = SimpleServiceLocator.logisticsManager.getAvailableItems(exits);
-			ItemIdentifier req = ItemIdentifier.get(wanted);
-			int count = items.getOrDefault(req, 0);
-			if(count == 0 && craft == 0){
-				OpResult r = new OpResult();
-				r.used = Collections.emptyList();
-				r.missing = Collections.singletonList(wanted);
-				return r;
-			}
-			ListLog ll = new ListLog();
-			/*System.out.println("BridgePipe.Req.simulateRequest()");
+			alreadyProcessing = true;
+			try {
+				IRouter myRouter = getRouter();
+				List<ExitRoute> exits = new ArrayList<>(myRouter.getIRoutersByCost());
+				exits.removeIf(e -> e.destination == myRouter);
+				Map<ItemIdentifier, Integer> items = SimpleServiceLocator.logisticsManager.getAvailableItems(exits);
+				ItemIdentifier req = ItemIdentifier.get(wanted);
+				int count = items.getOrDefault(req, 0);
+				if(count == 0 && craft == 0){
+					OpResult r = new OpResult();
+					r.used = Collections.emptyList();
+					r.missing = Collections.singletonList(wanted);
+					return r;
+				}
+				ListLog ll = new ListLog();
+				/*System.out.println("BridgePipe.Req.simulateRequest()");
 			System.out.println(wanted);*/
-			ItemIdentifierStack item = ItemIdentifier.get(wanted).makeStack(craft != 0 ? wanted.getCount() : Math.min(count, wanted.getCount()));
-			ItemResource reqRes = new ItemResource(item, BridgePipe.this);
-			RequestTree tree = new RequestTree(reqRes, null, (craft & 0b0010) != 0 ? EnumSet.of(ActiveRequestType.Craft) : RequestTree.defaultRequestFlags, null);
-			if (!tree.isDone()) {
-				recurseFailedRequestTree.accept(tree);
-			}
-			tree.sendUsedMessage(ll);
-			OpResult res = ll.asResult();
-			if((craft & 0b0100) != 0 && isDefaultRoute){
-				List<IExtraPromise> extrasPromises = new ArrayList<>();
-				listExras(tree, extrasPromises);
-				res.extra = extrasPromises.stream().map(e -> e.getItemType().makeNormalStack(e.getAmount())).collect(Collectors.toList());
-			}
-			if(craft == 0 && !allowPartial && wanted.getCount() > count){
-				int missingCount = wanted.getCount() - count;
-				ItemStack missingStack = wanted.copy();
-				missingStack.setCount(missingCount);
-				res.missing.add(missingStack);
-			}
+				ItemIdentifierStack item = ItemIdentifier.get(wanted).makeStack(craft != 0 ? wanted.getCount() : Math.min(count, wanted.getCount()));
+				ItemResource reqRes = new ItemResource(item, BridgePipe.this);
+				RequestTree tree = new RequestTree(reqRes, null, (craft & 0b0010) != 0 ? EnumSet.of(ActiveRequestType.Craft) : RequestTree.defaultRequestFlags, null);
+				if (!tree.isDone()) {
+					recurseFailedRequestTree.accept(tree);
+				}
+				tree.sendUsedMessage(ll);
+				OpResult res = ll.asResult();
+				if((craft & 0b0100) != 0 && isDefaultRoute){
+					List<IExtraPromise> extrasPromises = new ArrayList<>();
+					listExras(tree, extrasPromises);
+					res.extra = extrasPromises.stream().map(e -> e.getItemType().makeNormalStack(e.getAmount())).collect(Collectors.toList());
+				}
+				if(craft == 0 && !allowPartial && wanted.getCount() > count){
+					int missingCount = wanted.getCount() - count;
+					ItemStack missingStack = wanted.copy();
+					missingStack.setCount(missingCount);
+					res.missing.add(missingStack);
+				}
 
-			return res;
+				return res;
+			} finally {
+				alreadyProcessing = false;
+			}
 		}
 
 		public OpResult performRequest(ItemStack wanted, boolean craft) {
@@ -738,5 +749,10 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 			entityplayer.sendMessage(new TextComponentTranslation("chat.logisticsbridge.bridgeDefaultRoute",
 					new TextComponentTranslation("gui.itemsink." + (isDefaultRoute ? "Yes" : "No"))));
 		}
+	}
+
+	@Override
+	public boolean disconnectPipe(TileEntity tile, EnumFacing dir) {
+		return dir.getAxis() == Axis.Y && tile instanceof IBridge ? true : false;
 	}
 }

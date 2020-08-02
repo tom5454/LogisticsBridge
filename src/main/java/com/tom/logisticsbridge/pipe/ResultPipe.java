@@ -484,4 +484,8 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 			getCacheHolder().trigger(CacheTypes.Inventory);
 		}
 	}
+
+	public boolean hasRequests() {
+		return getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA);
+	}
 }

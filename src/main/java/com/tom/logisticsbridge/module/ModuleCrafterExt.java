@@ -15,8 +15,10 @@ import logisticspipes.interfaces.routing.IAdditionalTargetInformation;
 import logisticspipes.interfaces.routing.IFilter;
 import logisticspipes.interfaces.routing.IRequestFluid;
 import logisticspipes.interfaces.routing.IRequestItems;
+import logisticspipes.modules.ChassiModule;
 import logisticspipes.modules.ModuleCrafter;
 import logisticspipes.pipes.basic.CoreRoutedPipe;
+import logisticspipes.proxy.MainProxy;
 import logisticspipes.proxy.SimpleServiceLocator;
 import logisticspipes.request.DictCraftingTemplate;
 import logisticspipes.request.ICraftingTemplate;
@@ -326,6 +328,22 @@ public class ModuleCrafterExt extends ModuleCrafter {
 			return;
 		}
 	}
+
+	@Override
+	public void guiClosedByPlayer(EntityPlayer player) {
+		super.guiClosedByPlayer(player);
+		if(MainProxy.isClient(_world.getWorld()))return;
+		if(!(_service instanceof CraftingManager))return;
+		CraftingManager mngr = (CraftingManager) _service;
+		ChassiModule m = mngr.getModules();
+		for(int i = 0;i<27;i++) {
+			if(m.getModule(i) == this) {
+				mngr.save(i);
+				break;
+			}
+		}
+	}
+
 	public static class BufferInformation extends CraftingChassieInformation {
 
 		public BufferInformation(int craftingSlot, int moduleSlot) {
