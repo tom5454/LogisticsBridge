@@ -18,7 +18,7 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
 
 import net.minecraftforge.fluids.FluidStack;
@@ -154,7 +154,7 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 
 	@Override
 	public long countItem(ItemStack stack, boolean requestable) {
-		if(disableLP && !bridgeMode)return 0;
+		if(disableLP && !bridgeMode || network == null)return 0;
 		ItemStack is = network.getItemStorageCache().getList().get(stack);
 		int inRS = is == null ? 0 : is.getCount();
 		int inBuf = craftingItems.stream().filter(s -> itemsEquals(s, stack)).mapToInt(ItemStack::getCount).sum();
@@ -177,7 +177,7 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 	@SuppressWarnings("unchecked")
 	@Override
 	public List<BridgeStack<ItemStack>> getItems() {
-		if(disableLP && !bridgeMode)return Collections.emptyList();
+		if(disableLP && !bridgeMode || network == null)return Collections.emptyList();
 		return LogisticsBridge.concatStreams(
 				network.getItemStorageCache().getList().getStacks().stream().
 				filter(e -> e != null && e.getItem() != LogisticsBridge.logisticsFakeItem).
@@ -194,8 +194,8 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 
 	@Override
 	public ItemStack extractStack(ItemStack stack, int count, boolean simulate) {
+		if(network == null)return ItemStack.EMPTY;
 		ItemStack ex = network.extractItem(stack, count, simulate ? Action.SIMULATE : Action.PERFORM);
-		//System.out.println(ex + " " + count);
 		return ex;
 	}
 
@@ -276,6 +276,7 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 
 	@Override
 	public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+		if(network == null)return stack;
 		ItemStack is = simulate ? network.insertItem(stack, stack.getCount(), Action.SIMULATE) : network.insertItemTracked(stack, stack.getCount());
 		return is == null ? ItemStack.EMPTY : is;
 	}
@@ -425,8 +426,10 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 		firstTick = true;
 		if(playerIn.isSneaking()) {
 			bridgeMode = !bridgeMode;
-			TextComponentString text = new TextComponentString("RS Bridge mode switched to: " +
-					(bridgeMode ? "Simple Mode" : "Smart Mode"));
+			TextComponentTranslation text = new TextComponentTranslation("chat.logisticsbridge.bridgeMode", "RS",
+					(bridgeMode ? new TextComponentTranslation("chat.logisticsbridge.bridgeMode.simple") :
+						new TextComponentTranslation("chat.logisticsbridge.bridgeMode.smart")
+							));
 			playerIn.sendMessage(text);
 		}
 	}

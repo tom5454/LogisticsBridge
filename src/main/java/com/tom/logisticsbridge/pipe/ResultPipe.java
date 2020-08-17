@@ -488,4 +488,10 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 	public boolean hasRequests() {
 		return getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA);
 	}
+
+	@Override
+	public void onNeighborBlockChange() {
+		clearCache();
+		super.onNeighborBlockChange();
+	}
 }

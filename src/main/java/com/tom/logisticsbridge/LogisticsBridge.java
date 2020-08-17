@@ -45,11 +45,14 @@ import net.minecraftforge.fml.common.registry.GameRegistry.ObjectHolder;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.oredict.ShapedOreRecipe;
+import net.minecraftforge.oredict.ShapelessOreRecipe;
 import net.minecraftforge.registries.IForgeRegistry;
 
 import com.tom.logisticsbridge.inventory.ContainerCraftingManager;
 import com.tom.logisticsbridge.item.FakeItem;
+import com.tom.logisticsbridge.module.AdvItemExtractionUpgrade;
 import com.tom.logisticsbridge.module.BufferUpgrade;
+import com.tom.logisticsbridge.module.CraftingManagerPipeSign;
 import com.tom.logisticsbridge.network.RequestIDListPacket;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
@@ -64,8 +67,10 @@ import logisticspipes.LogisticsPipes;
 import logisticspipes.blocks.LogisticsProgramCompilerTileEntity;
 import logisticspipes.blocks.LogisticsProgramCompilerTileEntity.ProgrammCategories;
 import logisticspipes.items.ItemLogisticsProgrammer;
+import logisticspipes.items.ItemPipeSignCreator;
 import logisticspipes.items.ItemUpgrade;
 import logisticspipes.pipes.basic.CoreUnroutedPipe;
+import logisticspipes.pipes.upgrades.ItemStackExtractionUpgrade;
 import logisticspipes.recipes.NBTIngredient;
 import logisticspipes.textures.Textures;
 import logisticspipes.textures.Textures.TextureType;
@@ -77,7 +82,7 @@ dependencies = LogisticsBridge.DEPS, updateJSON = LogisticsBridge.UPDATE)
 public class LogisticsBridge {
 	public static final String ID = "logisticsbridge";
 	public static final String NAME = "Logistics Bridge";
-	public static final String VERSION = "1.3.9";
+	public static final String VERSION = "1.3.10";
 	public static final String DEPS = "after:appliedenergistics2;after:refinedstorage@[1.6.15,);required-after:logisticspipes@[0.10.3.39,)";
 	public static final String UPDATE = "https://github.com/tom5454/LogisticsBridge/blob/master/version-check.json";
 	public static final Logger log = LogManager.getLogger(NAME);
@@ -106,6 +111,9 @@ public class LogisticsBridge {
 
 	@ObjectHolder("logisticspipes:upgrade_lb.buffer_upgrade")
 	public static Item upgradeBuffer;
+
+	@ObjectHolder("logisticspipes:upgrade_lb.adv_extraction_upgrade")
+	public static Item upgradeAdvExt;
 
 	@Instance(ID)
 	public static LogisticsBridge modInstance;
@@ -155,6 +163,7 @@ public class LogisticsBridge {
 		registerPipe(registry, "lb.resultpipe", ResultPipe::new);
 		registerPipe(registry, "lb.craftingmanager", CraftingManager::new);
 		ItemUpgrade.registerUpgrade(registry, "lb.buffer_upgrade", BufferUpgrade::new);
+		ItemUpgrade.registerUpgrade(registry, "lb.adv_extraction_upgrade", AdvItemExtractionUpgrade::new);
 		log.info("Registered Pipes");
 	}
 
@@ -212,7 +221,7 @@ public class LogisticsBridge {
 	public static void postInit(FMLPostInitializationEvent evt) {
 		log.info("Start Post Initialization");
 		long tM = System.currentTimeMillis();
-		//loadRecipes();
+		ItemPipeSignCreator.signTypes.add(CraftingManagerPipeSign.class);
 		long time = System.currentTimeMillis() - tM;
 		log.info("Post Initialization took in " + time + " milliseconds");
 	}
@@ -268,6 +277,10 @@ public class LogisticsBridge {
 				'i', "gemDiamond",
 				'P', "paper").
 				setRegistryName(new ResourceLocation(ID, "recipes/buffer_upgrade")));
+		ForgeRegistries.RECIPES.register(new ShapelessOreRecipe(group, new ItemStack(upgradeAdvExt),
+				ItemUpgrade.getAndCheckUpgrade(LPItems.upgrades.get(ItemStackExtractionUpgrade.getName())),
+				"dustRedstone").
+				setRegistryName(new ResourceLocation(ID, "recipes/adv_ext_upgrade")));
 	}
 
 	private static Ingredient getIngredientForProgrammer(ResourceLocation rl) {

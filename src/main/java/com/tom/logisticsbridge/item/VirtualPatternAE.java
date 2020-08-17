@@ -48,22 +48,24 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 			return null;
 		}
 	}
-	public static ICraftingPatternDetails create(ItemStack output){
+	/*public static ICraftingPatternDetails create(ItemStack output){
 		NBTTagCompound ot = output.writeToNBT(new NBTTagCompound());
 		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);
-	}
+	}*/
 	public static ICraftingPatternDetails create(ItemStack input, ItemStack output){
-		NBTTagCompound ot = new NBTTagCompound();
+		/*NBTTagCompound ot = new NBTTagCompound();
 		ot.setTag("in", input.writeToNBT(new NBTTagCompound()));
 		ot.setTag("out", output.writeToNBT(new NBTTagCompound()));
-		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);
+		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);*/
+		return new VirtualPatternHandler(input, output);
 	}
 	public static ICraftingPatternDetails create(ItemStack output, IDynamicPatternDetailsAE handler){
-		NBTTagCompound ot = output.writeToNBT(new NBTTagCompound());
+		/*NBTTagCompound ot = output.writeToNBT(new NBTTagCompound());
 		ot.setTag(DYNAMIC_PATTERN_ID, IDynamicPatternDetailsAE.save(handler));
-		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);
+		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);*/
+		return new VirtualPatternHandler(output, handler);
 	}
-	private static ICraftingPatternDetails create(NBTTagCompound ot){
+	/*private static ICraftingPatternDetails create(NBTTagCompound ot){
 		ItemStack is = new ItemStack(AE2Plugin.virtualPattern);
 		NBTTagCompound dyTag = ot.getCompoundTag(DYNAMIC_PATTERN_ID);
 		ot.removeTag(DYNAMIC_PATTERN_ID);
@@ -81,7 +83,7 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 			list.appendTag(in);
 		if(!dyTag.hasNoTags())tag.setTag("dynamic", dyTag);
 		return getPatternForItem(is);
-	}
+	}*/
 	@Override
 	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
 		tooltip.add(I18n.format("tooltip.logisticsbridge.techItem"));
@@ -95,6 +97,61 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 		private final IAEItemStack pattern;
 		private final IDynamicPatternDetailsAE dynamic;
 		private int priority = 0;
+
+		public VirtualPatternHandler(ItemStack output, IDynamicPatternDetailsAE handler) {
+			this.result = output;
+			ItemStack is = new ItemStack(AE2Plugin.virtualPattern);
+			ItemStack input = new ItemStack(LogisticsBridge.logisticsFakeItem);
+			is.setTagCompound(new NBTTagCompound());
+			NBTTagCompound tag = is.getTagCompound();
+			NBTTagList l = new NBTTagList();
+			tag.setTag("in", l);
+			NBTTagCompound t = new NBTTagCompound();
+			input.writeToNBT(t);
+			l.appendTag(t);
+
+			l = new NBTTagList();
+			tag.setTag("out", l);
+			t = new NBTTagCompound();
+			output.writeToNBT(t);
+			l.appendTag(t);
+
+			tag.setTag("dynamic", IDynamicPatternDetailsAE.save(handler));
+
+			this.patternItem = is;
+			this.pattern = AEItemStack.fromItemStack( is );
+
+			this.condensedOutputs = this.outputs = new IAEItemStack[] { AEItemStack.fromItemStack( output ) };
+			this.condensedInputs = this.inputs = new IAEItemStack[] { AEItemStack.fromItemStack( input ) };
+
+			this.dynamic = handler;
+		}
+
+		public VirtualPatternHandler(ItemStack input, ItemStack output) {
+			this.result = output;
+			ItemStack is = new ItemStack(AE2Plugin.virtualPattern);
+			is.setTagCompound(new NBTTagCompound());
+			NBTTagCompound tag = is.getTagCompound();
+			NBTTagList l = new NBTTagList();
+			tag.setTag("in", l);
+			NBTTagCompound t = new NBTTagCompound();
+			input.writeToNBT(t);
+			l.appendTag(t);
+
+			l = new NBTTagList();
+			tag.setTag("out", l);
+			t = new NBTTagCompound();
+			output.writeToNBT(t);
+			l.appendTag(t);
+
+			this.patternItem = is;
+			this.pattern = AEItemStack.fromItemStack( is );
+
+			this.condensedOutputs = this.outputs = new IAEItemStack[] { AEItemStack.fromItemStack( output ) };
+			this.condensedInputs = this.inputs = new IAEItemStack[] { AEItemStack.fromItemStack( input ) };
+
+			this.dynamic = null;
+		}
 
 		public VirtualPatternHandler(ItemStack is) {
 			final NBTTagCompound tag = is.getTagCompound();
@@ -227,6 +284,10 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 
 		@Override
 		public ItemStack getPattern() {
+			if(patternItem == null) {
+
+			}
+
 			return patternItem;
 		}
 

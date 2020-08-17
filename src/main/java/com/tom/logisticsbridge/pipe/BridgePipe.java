@@ -11,10 +11,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -290,15 +292,15 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		}
 	}
 	protected int neededEnergy() {
-		return 1;
+		return (int) (10 * Math.pow(1.1, upgradeManager.getItemExtractionUpgrade()) * Math.pow(1.2, upgradeManager.getItemStackExtractionUpgrade()) * 2);
 	}
 
 	protected int itemsToExtract() {
-		return 8;
+		return (int) Math.pow(2,upgradeManager.getItemExtractionUpgrade());
 	}
 
 	protected int stacksToExtract() {
-		return 1;
+		return 1 + upgradeManager.getItemStackExtractionUpgrade();
 	}
 	private int sendStack(ItemIdentifierStack stack, int maxCount, int destination, IAdditionalTargetInformation info, boolean setFailed) {
 		ItemIdentifier item = stack.getItem();
@@ -485,8 +487,10 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 				map(s -> new ItemIdentifierStack(ItemIdentifier.get(s.obj), 1)).
 				collect(Collectors.toList());
 	}
+
 	public class Req {
 		private boolean alreadyProcessing;
+		private Set<ItemIdentifier> craftedStacks = new HashSet<>();
 		public List<ItemStack> getProvidedItems() {
 			if(alreadyProcessing || !isEnabled())return Collections.emptyList();
 			if (stillNeedReplace()) {
@@ -611,6 +615,29 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 
 		public boolean isDefaultRoute() {
 			return isDefaultRoute;
+		}
+
+		public boolean detectChanged() {
+			if(alreadyProcessing || !isEnabled())return false;
+			if (stillNeedReplace()) {
+				return false;
+			}
+			IRouter myRouter = getRouter();
+			List<ExitRoute> exits = new ArrayList<>(myRouter.getIRoutersByCost());
+			exits.removeIf(e -> e.destination == myRouter);
+			LinkedList<ItemIdentifier> items = SimpleServiceLocator.logisticsManager.getCraftableItems(exits);
+			if(items.size() != craftedStacks.size()) {
+				craftedStacks.clear();
+				craftedStacks.addAll(items);
+				return true;
+			}
+			boolean c = craftedStacks.containsAll(items);
+			if(!c) {
+				craftedStacks.clear();
+				craftedStacks.addAll(items);
+				return true;
+			}
+			return false;
 		}
 	}
 	public static class OpResult {

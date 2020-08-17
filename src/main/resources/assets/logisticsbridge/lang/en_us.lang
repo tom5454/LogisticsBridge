@@ -6,13 +6,14 @@ item.logisticspipes.pipe_lb.bridgepipe.tip4= - Use a wrench to toggle default ro
 item.logisticspipes.pipe_lb.bridgepipe.tip5=    This also enables the advanced bridging logic.
 item.logisticspipes.pipe_lb.bridgepipe.tip6=Must be placed on the side of the Bridge block
 item.logisticspipes.pipe_lb.bridgepipe.tip7=Added by %cBLUE Logistics Bridge
+item.upgrade.info.bridge=Bridge
 
 item.logisticspipes.pipe_lb.craftingmanager.name=Crafting Manager
 item.logisticspipes.pipe_lb.craftingmanager.tip1=Type: AutoCrafting
 item.logisticspipes.pipe_lb.craftingmanager.tip2= - Doesn't need an inventory
 item.logisticspipes.pipe_lb.craftingmanager.tip3= - Can contain 27 Crafting modules with 2 Upgrade slots each.
 item.logisticspipes.pipe_lb.craftingmanager.tip4= - Install module upgrades by dropping them on the module slot.
-item.logisticspipes.pipe_lb.craftingmanager.tip5= - Used with a %cYELLOW Result Pipe %cRESET %cGRAY & %cYELLOW Satellite Pipe %cRESET %cGRAY.
+item.logisticspipes.pipe_lb.craftingmanager.tip5= - Used with a %cYELLOW Result Pipe %cRESET %cGRAY & %cYELLOW Satellite Pipe %cRESET %cGRAY
 item.logisticspipes.pipe_lb.craftingmanager.tip6=Added by %cBLUE Logistics Bridge
 item.upgrade.info.crafting_manager=Crafting Manager
 
@@ -22,6 +23,7 @@ item.logisticspipes.pipe_lb.resultpipe.tip2= - Attaches to an inventory
 item.logisticspipes.pipe_lb.resultpipe.tip3= - Sends 16 items into the network to fulfill crafting requests.
 item.logisticspipes.pipe_lb.resultpipe.tip4= - Used with a %cYELLOW Crafting Manager %cRESET %cGRAY.
 item.logisticspipes.pipe_lb.resultpipe.tip5=Added by %cBLUE Logistics Bridge
+item.upgrade.info.result=Result
 
 item.logisticspipes.upgrade_lb.buffer_upgrade.name=Crafting Buffer Upgrade
 item.logisticspipes.upgrade_lb.buffer_upgrade.tip1=Uses attached chest to buffer crafting ingredients.
@@ -29,6 +31,11 @@ item.logisticspipes.upgrade_lb.buffer_upgrade.tip2=Allows buffering ingredients 
 item.logisticspipes.upgrade_lb.buffer_upgrade.tip3=Allows %cRED Redstone %cRESET %cGRAY Control of crafting.
 item.logisticspipes.upgrade_lb.buffer_upgrade.tip4=Dark red particles indicate blocked state.
 item.logisticspipes.upgrade_lb.buffer_upgrade.tip5=Added by %cBLUE Logistics Bridge
+
+item.logisticspipes.upgrade_lb.adv_extraction_upgrade.name=Advanced Extraction Upgrade
+item.logisticspipes.upgrade_lb.adv_extraction_upgrade.tip1=Works same as ItemStack Extraction Upgrade
+item.logisticspipes.upgrade_lb.adv_extraction_upgrade.tip2=but works with %cYELLOW Bridge %cRESET %cGRAY and %cYELLOW Result Pipes
+item.logisticspipes.upgrade_lb.adv_extraction_upgrade.tip3=Added by %cBLUE Logistics Bridge
 
 item.lb.logisticsFakeItem.name=Logistics Craft Token
 item.lb.package.name=Empty Package
@@ -52,6 +59,9 @@ tooltip.logisticsbridge.satID=Satellite ID: %s
 tooltip.logisticsbridge.packageName=%s to %s
 
 chat.logisticsbridge.bridgeDefaultRoute=Bridge Pipe default route: %s
+chat.logisticsbridge.bridgeMode=%s Bridge mode switched to: %s
+chat.logisticsbridge.bridgeMode.simple=Simple Mode
+chat.logisticsbridge.bridgeMode.smart=Smart Mode
 
 gui.resultPipe.id=Result Pipe ID
 gui.craftingManager=Crafting Manager

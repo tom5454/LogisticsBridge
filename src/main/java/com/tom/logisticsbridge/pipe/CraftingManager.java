@@ -14,6 +14,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.InventoryBasic;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -21,6 +22,8 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.text.TextComponentTranslation;
 
 import net.minecraftforge.fml.client.FMLClientHandler;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import com.tom.logisticsbridge.GuiHandler.GuiIDs;
 import com.tom.logisticsbridge.LogisticsBridge;
@@ -66,6 +69,9 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	private UUID satelliteUUID, resultUUID;
 	private BlockingMode blockingMode = BlockingMode.OFF;
 	private int sendCooldown = 0;
+
+	@SideOnly(Side.CLIENT)
+	private IInventory clientInv = new InventoryBasic(null, false, 27);
 
 	public CraftingManager(Item item) {
 		super(item);
@@ -123,6 +129,20 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 				}
 			}
 		}
+		if (!MainProxy.isClient(getWorld())) {
+			sendSignData();
+		}
+	}
+
+	private void sendSignData() {
+		for (int i = 0; i < 6; i++) {
+			if (signItem[i] != null) {
+				ModernPacket packet = signItem[i].getPacket();
+				if (packet != null) {
+					MainProxy.sendPacketToAllWatchingChunk(container, packet);
+				}
+			}
+		}
 	}
 
 	public LogisticsModule getModuleForItem(ItemStack itemStack, LogisticsModule currentModule, IWorldProvider world, IPipeServiceProvider service) {
@@ -150,8 +170,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 
 	@Override
 	public boolean handleClick(EntityPlayer entityplayer, SecuritySettings settings) {
-		handleClick0(entityplayer, settings);
-		return true;
+		return handleClick0(entityplayer, settings);
 	}
 
 	private boolean handleClick0(EntityPlayer entityplayer, SecuritySettings settings) {
@@ -503,6 +522,8 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 			ItemModuleInformationManager.saveInformation(st, getModules().getModule(i));
 			getModuleInventory().setInventorySlotContents(i, st);
 		}
+
+		sendSignData();
 	}
 
 	public static enum BlockingMode {
@@ -518,6 +539,11 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 
 	public BlockingMode getBlockingMode() {
 		return blockingMode;
+	}
+
+	@SideOnly(Side.CLIENT)
+	public IInventory getClientModuleInventory() {
+		return clientInv;
 	}
 
 	/*public class Origin implements IAdditionalTargetInformation {

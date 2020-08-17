@@ -15,12 +15,14 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
 import net.minecraft.inventory.InventoryCrafting;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextComponentTranslation;
 
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.LoaderState;
@@ -39,6 +41,7 @@ import com.tom.logisticsbridge.item.VirtualPatternAE;
 import com.tom.logisticsbridge.pipe.BridgePipe.OpResult;
 import com.tom.logisticsbridge.pipe.BridgePipe.Req;
 import com.tom.logisticsbridge.util.DynamicInventory;
+import com.tom.logisticsbridge.util.TileProfiler;
 
 import appeng.api.config.AccessRestriction;
 import appeng.api.config.Actionable;
@@ -58,6 +61,7 @@ import appeng.api.networking.events.MENetworkCraftingPatternChange;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.networking.storage.IStorageGrid;
+import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.storage.ICellContainer;
 import appeng.api.storage.ICellInventory;
 import appeng.api.storage.IMEInventoryHandler;
@@ -98,6 +102,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	private long lastPushTime;
 	private boolean disableLP;
 	private boolean bridgeMode;
+	private TileProfiler profiler = new TileProfiler("AE Bridge");
 
 	public TileEntityBridgeAE() {
 		getProxy().setFlags(GridFlags.REQUIRE_CHANNEL);
@@ -107,21 +112,42 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	public void update() {
 		if(!world.isRemote){
 			long wt = world.getTotalWorldTime();
-			if(wt % 40 == 0 && this.getProxy().getNode() != null){
-				markInvDirty();
+			profiler.startProfiling();
+			if(wt % 40 == 0 && this.getProxy().getNode() != null) {
+				profiler.startSection("Net update (every 40 ticks)");
+				profiler.startSection("Tick AE Inv");
+				boolean changed = meInv.onTick() == TickRateModulation.URGENT;
+				if(changed) {
+					profiler.endStartSection("Refresh AE item list");
+					this.getProxy().getNode().getGrid().postEvent(new MENetworkCellArrayUpdate());
+				}
+				if(reqapi != null) {
+					profiler.endStartSection("Detect crafting changes");
+					changed = reqapi.detectChanged();
+					if(changed) {
+						profiler.endStartSection("Refresh AE");
+						this.getProxy().getNode().getGrid().postEvent(new MENetworkCraftingPatternChange(this, this.getProxy().getNode()));
+					}
+				}
+				profiler.endStartSection("Updating queued crafting");
 				synchronized (toCraft) {
 					toCraft.entrySet().forEach(s -> craftStack(s.getKey(), s.getValue(), false));
 					toCraft.clear();
 				}
 				dynInv.removeEmpties();
+				profiler.endSection();
+				profiler.endSection();
 			}
 			if(lastInjectTime + 200 < wt && this.getProxy().getNode() != null && !dynInv.isEmpty()){
+				profiler.startSection("Empting internal inventory");
 				lastInjectTime = wt - 20;
 				for(int i = 0;i<dynInv.getSizeInventory();i++){
 					dynInv.setInventorySlotContents(i, insertItem(0, dynInv.getStackInSlot(i), false));
 				}
 				dynInv.removeEmpties();
+				profiler.endSection();
 			}
+			profiler.startSection("Emitting fake items");
 			try {
 				ICraftingGrid cg = this.getProxy().getGrid().getCache(ICraftingGrid.class);
 				if(cg.isRequesting(FAKE_ITEM)){
@@ -129,6 +155,8 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 				}
 			} catch (GridAccessException e) {
 			}
+			profiler.endSection();
+			profiler.finishProfiling();
 		}
 	}
 
@@ -343,21 +371,18 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 		return null;
 	}
 
-	private void markInvDirty() {
-		meInv.onTick();
-		this.getProxy().getNode().getGrid().postEvent(new MENetworkCellArrayUpdate());
-		this.getProxy().getNode().getGrid().postEvent(new MENetworkCraftingPatternChange(this, this.getProxy().getNode()));
-	}
-
 	@Override
 	public IItemList<IAEItemStack> getAvailableItems(IItemList<IAEItemStack> out) {
 		if(reqapi == null)return out;
+		profiler.startSection("getAvailableItems");
 		craftings.clear();
 		fakeItems.resetStatus();
 		try {
 			if(Loader.instance().getLoaderState() == LoaderState.SERVER_STOPPING)return out;
+			profiler.startSection("List LP");
 			List<ItemStack> pi = reqapi.getProvidedItems();
 			List<ItemStack> ci = reqapi.getCraftedItems();
+			profiler.endStartSection("Wrap AE");
 			pi.stream().map(ITEMS::createStack).map(s -> {
 				s.setCraftable(true);
 				s.setCountRequestable(s.getStackSize());
@@ -366,16 +391,22 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 			}).forEach(out::add);
 			ci.stream().map(ITEMS::createStack).forEach(out::addCrafting);
 			TileEntityWrapper wr = new TileEntityWrapper(this);
+			profiler.endStartSection("Wrap VP item");
 			pi.stream().map(i -> {
 				ItemStack r = i.copy();
 				r.setCount(1);
 				fakeItems.add(ITEMS.createStack(LogisticsBridge.fakeStack(r, i.getCount())));
 				return VirtualPatternAE.create(r, wr);
 			}).forEach(craftings::add);
+			profiler.endStartSection("Wrap VP craft");
 			ci.stream().map(i -> VirtualPatternAE.create(i, wr)).forEach(craftings::add);
+			profiler.endStartSection("Mount Fake Items");
 			fakeItems.forEach(out::addStorage);
+			profiler.endSection();
 		} catch(Exception e){
 			e.printStackTrace();
+		} finally {
+			profiler.endSection();
 		}
 		return out;
 	}
@@ -564,32 +595,41 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	public void blockClicked(EntityPlayer playerIn) {
 		if(playerIn.isSneaking()) {
 			bridgeMode = !bridgeMode;
-			TextComponentString text = new TextComponentString("AE Bridge mode switched to: " +
-					(bridgeMode ? "Simple Mode" : "Smart Mode"));
+			TextComponentTranslation text = new TextComponentTranslation("chat.logisticsbridge.bridgeMode", "AE",
+					(bridgeMode ? new TextComponentTranslation("chat.logisticsbridge.bridgeMode.simple") :
+						new TextComponentTranslation("chat.logisticsbridge.bridgeMode.smart")
+							));
 			playerIn.sendMessage(text);
 		} else {
-			String info = infoString();
-			if(info.isEmpty())info = "  No problems";
-			TextComponentString text = new TextComponentString("AE Bridge\n" + info);
-			if(lastPush != null){
-				for(ItemStack i : lastPush.missing){
-					text.appendText("    ");
-					text.appendSibling(i.getTextComponent());
-					text.appendText(" * " + i.getCount() + "\n");
+			if(playerIn.getHeldItemMainhand().getItem() == Items.STICK) {
+				if(profiler.resultPlayer != null)return;
+				TextComponentString text = new TextComponentString("Bridge diagnostics started, testing for 200 ticks (10 sec)...");
+				playerIn.sendMessage(text);
+				profiler.setResultPlayer(playerIn, 200);
+			} else {
+				String info = infoString();
+				if(info.isEmpty())info = "  No problems";
+				TextComponentString text = new TextComponentString("AE Bridge\n" + info);
+				if(lastPush != null){
+					for(ItemStack i : lastPush.missing){
+						text.appendText("    ");
+						text.appendSibling(i.getTextComponent());
+						text.appendText(" * " + i.getCount() + "\n");
+					}
+					long ago = System.currentTimeMillis() - lastPushTime;
+					text.appendText(String.format("  %1$tH %1$tM,%1$tS ago\n", ago));
 				}
-				long ago = System.currentTimeMillis() - lastPushTime;
-				text.appendText(String.format("  %1$tH %1$tM,%1$tS ago\n", ago));
-			}
-			if(dynInv.getSizeInventory() > 0){
-				text.appendText("\nStored items:\n");
-				for (int i = 0; i < dynInv.getSizeInventory(); i++) {
-					ItemStack is = dynInv.getStackInSlot(i);
-					text.appendText("    ");
-					text.appendSibling(is.getTextComponent());
-					text.appendText(" * " + is.getCount() + "\n");
+				if(dynInv.getSizeInventory() > 0){
+					text.appendText("\nStored items:\n");
+					for (int i = 0; i < dynInv.getSizeInventory(); i++) {
+						ItemStack is = dynInv.getStackInSlot(i);
+						text.appendText("    ");
+						text.appendSibling(is.getTextComponent());
+						text.appendText(" * " + is.getCount() + "\n");
+					}
 				}
+				playerIn.sendMessage(text);
 			}
-			playerIn.sendMessage(text);
 		}
 	}
 
