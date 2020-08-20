@@ -71,7 +71,9 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	private int sendCooldown = 0;
 
 	@SideOnly(Side.CLIENT)
-	private IInventory clientInv = new InventoryBasic(null, false, 27);
+	private IInventory clientInv;
+
+	private boolean readingNBT;
 
 	public CraftingManager(Item item) {
 		super(item);
@@ -135,6 +137,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	}
 
 	private void sendSignData() {
+		if(readingNBT)return;
 		for (int i = 0; i < 6; i++) {
 			if (signItem[i] != null) {
 				ModernPacket packet = signItem[i].getPacket();
@@ -275,14 +278,19 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	}
 	@Override
 	public void readFromNBT(NBTTagCompound nbttagcompound) {
-		super.readFromNBT(nbttagcompound);
-		resultId = nbttagcompound.getString("resultname");
-		satelliteId = nbttagcompound.getString("satellitename");
-		if(nbttagcompound.hasKey("resultid")){
-			resultId = Integer.toString(nbttagcompound.getInteger("resultid"));
-			satelliteId = Integer.toString(nbttagcompound.getInteger("satelliteid"));
+		try {
+			readingNBT = true;
+			super.readFromNBT(nbttagcompound);
+			resultId = nbttagcompound.getString("resultname");
+			satelliteId = nbttagcompound.getString("satellitename");
+			if(nbttagcompound.hasKey("resultid")){
+				resultId = Integer.toString(nbttagcompound.getInteger("resultid"));
+				satelliteId = Integer.toString(nbttagcompound.getInteger("satelliteid"));
+			}
+			blockingMode = BlockingMode.VALUES[Math.abs(nbttagcompound.getByte("blockingMode")) % BlockingMode.VALUES.length];
+		} finally {
+			readingNBT = false;
 		}
-		blockingMode = BlockingMode.VALUES[Math.abs(nbttagcompound.getByte("blockingMode")) % BlockingMode.VALUES.length];
 	}
 	@Override
 	public void collectSpecificInterests(Collection<ItemIdentifier> itemidCollection) {
@@ -543,6 +551,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 
 	@SideOnly(Side.CLIENT)
 	public IInventory getClientModuleInventory() {
+		if(clientInv == null)clientInv = new InventoryBasic(null, false, 27);
 		return clientInv;
 	}
 

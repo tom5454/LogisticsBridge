@@ -284,10 +284,6 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 
 		@Override
 		public ItemStack getPattern() {
-			if(patternItem == null) {
-
-			}
-
 			return patternItem;
 		}
 

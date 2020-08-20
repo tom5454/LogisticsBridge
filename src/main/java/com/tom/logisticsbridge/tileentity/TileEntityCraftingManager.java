@@ -30,6 +30,7 @@ import com.tom.logisticsbridge.item.VirtualPatternAE.VirtualPatternHandler;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
 import com.tom.logisticsbridge.part.PartSatelliteBus;
+import com.tom.logisticsbridge.pipe.CraftingManager.BlockingMode;
 
 import appeng.api.config.Actionable;
 import appeng.api.implementations.ICraftingPatternItem;
@@ -50,6 +51,7 @@ import appeng.api.util.AEPartLocation;
 import appeng.api.util.DimensionalCoord;
 import appeng.me.helpers.MachineSource;
 import appeng.tile.grid.AENetworkInvTile;
+import appeng.util.InventoryAdaptor;
 import appeng.util.SettingsFrom;
 import appeng.util.inv.InvOperation;
 import logisticspipes.network.PacketHandler;
@@ -66,6 +68,8 @@ IIdPipe, IInventoryChangedListener, ICraftingManager {
 	public InvWrapper wr = new InvWrapper(inv);
 	private IActionSource as = new MachineSource(this);
 	private List<ItemStack> toInsert = new ArrayList<>();
+	private BlockingMode blockingMode = BlockingMode.OFF;
+
 	public TileEntityCraftingManager() {
 		getProxy().setFlags(GridFlags.REQUIRE_CHANNEL);
 		inv.addInventoryChangeListener(this);
@@ -76,8 +80,45 @@ IIdPipe, IInventoryChangedListener, ICraftingManager {
 		return AECableType.SMART;
 	}
 
+	private boolean checkBlocking() {
+		switch (blockingMode) {
+		case EMPTY_MAIN_SATELLITE:
+		{
+			if(supplyID.isEmpty())return false;
+			PartSatelliteBus bus = find(supplyID);
+			if(bus == null)return false;
+			InventoryAdaptor inv = bus.getHandler();
+			if (inv != null) {
+				if(inv.containsItems())return false;
+			}
+			return true;
+		}
+
+		case REDSTONE_HIGH:
+			if(!getWorld().isBlockPowered(getPos()))return false;
+			return true;
+
+		case REDSTONE_LOW:
+			if(getWorld().isBlockPowered(getPos()))return false;
+			return true;
+
+			/*case WAIT_FOR_RESULT://TODO
+		{
+			IRouter resultR = getResultRouterByID(getResultUUID());
+			if(resultR == null)return false;
+			if(!(resultR.getPipe() instanceof ResultPipe))return false;
+			if(((ResultPipe) resultR.getPipe()).hasRequests())return false;
+			return true;
+		}*/
+
+		default:
+			return true;
+		}
+	}
+
 	@Override
 	public boolean pushPattern(ICraftingPatternDetails patternDetails, InventoryCrafting table) {
+		if(!checkBlocking())return false;
 		if(patternDetails instanceof VirtualPatternHandler){
 			if(toInsert.size() > 10)return false;
 			ItemStack stack = patternDetails.getCondensedOutputs()[0].asItemStackRepresentation();
@@ -142,7 +183,7 @@ IIdPipe, IInventoryChangedListener, ICraftingManager {
 
 	@Override
 	public String getPipeID(int id) {
-		return supplyID;
+		return id == 0 ? supplyID : Integer.toString(blockingMode.ordinal());
 	}
 
 	@Override
@@ -155,16 +196,19 @@ IIdPipe, IInventoryChangedListener, ICraftingManager {
 			final ModernPacket packet = PacketHandler.getPacket(SetIDPacket.class).setName(pipeID).setId(id).setTilePos(getTile());
 			MainProxy.sendPacketToPlayer(packet, player);
 		}
-		supplyID = pipeID;
+		if(id == 0)supplyID = pipeID;
+		else if(id == 1)blockingMode = BlockingMode.VALUES[Math.abs(pipeID.charAt(0) - '0') % BlockingMode.VALUES.length];
 	}
 	@Override
 	public NBTTagCompound writeToNBT(NBTTagCompound compound) {
 		compound.setString("supplyName", supplyID);
+		compound.setByte("blockingMode", (byte) blockingMode.ordinal());
 		return super.writeToNBT(compound);
 	}
 	@Override
 	public void readFromNBT(NBTTagCompound compound) {
 		supplyID = compound.getString("supplyName");
+		blockingMode = BlockingMode.VALUES[Math.abs(compound.getByte("blockingMode")) % BlockingMode.VALUES.length];
 		super.readFromNBT(compound);
 		updateCraftingList();
 	}
@@ -411,5 +455,10 @@ IIdPipe, IInventoryChangedListener, ICraftingManager {
 	@Override
 	public BlockPos getPosition() {
 		return pos;
+	}
+
+	@Override
+	public BlockingMode getBlockingMode() {
+		return blockingMode;
 	}
 }

@@ -33,6 +33,7 @@ import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.item.VirtualPatternRS;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
+import com.tom.logisticsbridge.pipe.CraftingManager.BlockingMode;
 
 import logisticspipes.network.PacketHandler;
 import logisticspipes.network.abstractpackets.ModernPacket;
@@ -50,6 +51,7 @@ public class NetworkNodeCraftingManager extends NetworkNode implements IIdPipe, 
 		@Override
 		public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
 			if(supplyID.isEmpty())return stack;
+			if(!checkBlocking())return stack;
 			NetworkNodeSatellite sat = find(supplyID);
 			if(sat == null)return stack;
 			if(stack.getItem() == LogisticsBridge.packageItem && stack.hasTagCompound() && stack.getTagCompound().getBoolean("__actStack")) {
@@ -113,6 +115,8 @@ public class NetworkNodeCraftingManager extends NetworkNode implements IIdPipe, 
 			return 1;
 		}
 	};
+	private BlockingMode blockingMode = BlockingMode.OFF;
+
 	public NetworkNodeCraftingManager(World world, BlockPos pos) {
 		super(world, pos);
 	}
@@ -133,7 +137,7 @@ public class NetworkNodeCraftingManager extends NetworkNode implements IIdPipe, 
 	}
 	@Override
 	public String getPipeID(int id) {
-		return supplyID;
+		return id == 0 ? supplyID : Integer.toString(blockingMode.ordinal());
 	}
 
 	@Override
@@ -146,7 +150,8 @@ public class NetworkNodeCraftingManager extends NetworkNode implements IIdPipe, 
 			final ModernPacket packet = PacketHandler.getPacket(SetIDPacket.class).setName(pipeID).setId(id).setBlockPos(getPos()).setDimension(getWorld());
 			MainProxy.sendPacketToPlayer(packet, player);
 		}
-		supplyID = pipeID;
+		if(id == 0)supplyID = pipeID;
+		else if(id == 1)blockingMode = BlockingMode.VALUES[Math.abs(pipeID.charAt(0) - '0') % BlockingMode.VALUES.length];
 	}
 
 	@Override
@@ -156,6 +161,7 @@ public class NetworkNodeCraftingManager extends NetworkNode implements IIdPipe, 
 			compound.setUniqueId(NBT_UUID, uuid);
 		}
 		StackUtils.writeItems(patternsInventory, 0, compound);
+		compound.setByte("blockingMode", (byte) blockingMode.ordinal());
 		return super.write(compound);
 	}
 
@@ -169,6 +175,7 @@ public class NetworkNodeCraftingManager extends NetworkNode implements IIdPipe, 
 		if (compound.hasUniqueId(NBT_UUID)) {
 			uuid = compound.getUniqueId(NBT_UUID);
 		}
+		blockingMode = BlockingMode.VALUES[Math.abs(compound.getByte("blockingMode")) % BlockingMode.VALUES.length];
 		super.read(compound);
 	}
 
@@ -272,5 +279,50 @@ public class NetworkNodeCraftingManager extends NetworkNode implements IIdPipe, 
 		network.getCraftingManager().getTasks().stream()
 		.filter(task -> task.getPattern().getContainer().getPosition().equals(pos))
 		.forEach(task -> network.getCraftingManager().cancel(task.getId()));
+	}
+
+	private boolean checkBlocking() {
+		switch (blockingMode) {
+		case EMPTY_MAIN_SATELLITE:
+		{
+			if(supplyID.isEmpty())return false;
+			NetworkNodeSatellite bus = find(supplyID);
+			if(bus == null)return false;
+			IItemHandler inv = bus.getHandler();
+			if (inv != null) {
+				for (int i = 0; i < inv.getSlots(); i++) {
+					ItemStack stackInSlot = inv.getStackInSlot(i);
+					if (!stackInSlot.isEmpty()) {
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+
+		case REDSTONE_HIGH:
+			if(!getWorld().isBlockPowered(getPos()))return false;
+			return true;
+
+		case REDSTONE_LOW:
+			if(getWorld().isBlockPowered(getPos()))return false;
+			return true;
+
+			/*case WAIT_FOR_RESULT://TODO
+		{
+			IRouter resultR = getResultRouterByID(getResultUUID());
+			if(resultR == null)return false;
+			if(!(resultR.getPipe() instanceof ResultPipe))return false;
+			if(((ResultPipe) resultR.getPipe()).hasRequests())return false;
+			return true;
+		}*/
+
+		default:
+			return true;
+		}
+	}
+
+	public BlockingMode getBlockingMode() {
+		return blockingMode;
 	}
 }

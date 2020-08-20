@@ -240,4 +240,9 @@ public class PartSatelliteBus extends PartSharedItemBus implements IIdPipe {
 			itemsToInsert.add(ITEMS.createStack(is));
 		return true;
 	}
+
+	@Override
+	public InventoryAdaptor getHandler() {
+		return super.getHandler();
+	}
 }

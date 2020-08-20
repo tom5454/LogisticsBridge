@@ -37,6 +37,8 @@ item.logisticspipes.upgrade_lb.adv_extraction_upgrade.tip1=Works same as ItemSta
 item.logisticspipes.upgrade_lb.adv_extraction_upgrade.tip2=but works with %cYELLOW Bridge %cRESET %cGRAY and %cYELLOW Result Pipes
 item.logisticspipes.upgrade_lb.adv_extraction_upgrade.tip3=Added by %cBLUE Logistics Bridge
 
+item.logisticspipes.sign_creator.2.name=Crafting Manager Sign Creator
+
 item.lb.logisticsFakeItem.name=Logistics Craft Token
 item.lb.package.name=Empty Package
 item.lb.virtPattern.name=Virtual Encoded Pattern

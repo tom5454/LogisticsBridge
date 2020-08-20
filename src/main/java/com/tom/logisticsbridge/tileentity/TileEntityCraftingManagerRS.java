@@ -14,6 +14,7 @@ import com.raoulvdberge.refinedstorage.tile.TileNode;
 
 import com.tom.logisticsbridge.RSPlugin;
 import com.tom.logisticsbridge.node.NetworkNodeCraftingManager;
+import com.tom.logisticsbridge.pipe.CraftingManager.BlockingMode;
 
 public class TileEntityCraftingManagerRS extends TileNode<NetworkNodeCraftingManager> implements ICraftingManager {
 
@@ -60,5 +61,10 @@ public class TileEntityCraftingManagerRS extends TileNode<NetworkNodeCraftingMan
 	@Override
 	public List<String> list(int id) {
 		return getNode().list(id);
+	}
+
+	@Override
+	public BlockingMode getBlockingMode() {
+		return getNode().getBlockingMode();
 	}
 }

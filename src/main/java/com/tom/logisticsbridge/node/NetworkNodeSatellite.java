@@ -65,6 +65,15 @@ public class NetworkNodeSatellite extends NetworkNode implements IIdPipe {
 		}
 	}
 
+	public IItemHandler getHandler() {
+		TileEntity te = getFacingTile();
+		if(te != null && te.hasCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, getDirection())){
+			IItemHandler h = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, getDirection());
+			return h;
+		}
+		return null;
+	}
+
 	private ItemStack injectCraftedItems(ItemStack stack, IItemHandler h) {
 		for (int i = 0; i < h.getSlots(); i++) {
 			stack = h.insertItem(i, stack, false);

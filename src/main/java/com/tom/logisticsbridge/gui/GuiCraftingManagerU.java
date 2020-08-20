@@ -13,11 +13,13 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.RenderItem;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 
 import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.inventory.ContainerCraftingManagerU;
+import com.tom.logisticsbridge.pipe.CraftingManager.BlockingMode;
 import com.tom.logisticsbridge.tileentity.ICraftingManager;
 
 import logisticspipes.utils.gui.LogisticsBaseGuiScreen;
@@ -62,13 +64,38 @@ public class GuiCraftingManagerU extends LogisticsBaseGuiScreen {
 		ConfigExtention ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.satellite"), pipe.satelliteDisplayStack(), 0);
 		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 45, guiTop + 25, 40, 10, StringUtils.translate("gui.crafting.Select")))));
 		extentionControllerLeft.addExtention(ce);
+		ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.blocking"), new ItemStack(Blocks.BARRIER), 2) {
+
+			@Override
+			public String getString() {
+				return StringUtils.translate("gui.craftingManager.blocking." + pipe.getBlockingMode().name().toLowerCase());
+			}
+
+			@Override
+			public int textOff() {
+				return 70;
+			}
+
+			@Override
+			public int getFinalWidth() {
+				return 140;
+			}
+		};
+		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(1, guiLeft - 45, guiTop + 11, 40, 10, StringUtils.translate("gui.craftingManager.blocking.change")))));
+		extentionControllerLeft.addExtention(ce);
 	}
 	@Override
 	protected void actionPerformed(GuiButton button) throws IOException {
 		switch (button.id) {
 		case 0:
 			openSubGuiForSatelliteSelection(0);
-			break;
+			return;
+
+		case 1:
+			BlockingMode m = BlockingMode.VALUES[(pipe.getBlockingMode().ordinal() + 1) % BlockingMode.VALUES.length];
+			if(m == BlockingMode.NULL)m = BlockingMode.OFF;
+			pipe.setPipeID(1, Integer.toString(m.ordinal()), null);
+			return;
 		}
 	}
 	private void openSubGuiForSatelliteSelection(int id) {
@@ -101,7 +128,7 @@ public class GuiCraftingManagerU extends LogisticsBaseGuiScreen {
 
 		@Override
 		public void renderForground(int left, int top) {
-			String pid = pipe.getPipeID(id);
+			String pid = getString();
 			if (!isFullyExtended()) {
 				GL11.glEnable(GL12.GL_RESCALE_NORMAL);
 				OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240 / 1.0F, 240 / 1.0F);
@@ -118,10 +145,17 @@ public class GuiCraftingManagerU extends LogisticsBaseGuiScreen {
 				if (pid == null || pid.isEmpty()) {
 					mc.fontRenderer.drawString(StringUtils.translate("gui.craftingManager.noConnection"), left + 40, top + 22, 0x404040);
 				} else {
-					mc.fontRenderer.drawString("" + pid, left + 40 - mc.fontRenderer.getStringWidth("" + pid)/2, top + 22, 0x404040);
+					mc.fontRenderer.drawString("" + pid, left + textOff() - mc.fontRenderer.getStringWidth("" + pid)/2, top + 22, 0x404040);
 				}
 			}
 		}
 
+		public String getString() {
+			return pipe.getPipeID(id);
+		}
+
+		public int textOff() {
+			return 40;
+		}
 	}
 }
