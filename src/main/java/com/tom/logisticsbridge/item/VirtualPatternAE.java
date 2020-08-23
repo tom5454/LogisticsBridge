@@ -29,8 +29,7 @@ import appeng.api.storage.data.IAEItemStack;
 import appeng.util.item.AEItemStack;
 
 public class VirtualPatternAE extends Item implements ICraftingPatternItem {
-	private static final WeakHashMap<NBTTagCompound, ICraftingPatternDetails> CACHE = new WeakHashMap<>();
-	private static final String DYNAMIC_PATTERN_ID = "__dyPatternDetails";
+	private static final WeakHashMap<Integer, ICraftingPatternDetails> CACHE = new WeakHashMap<>();
 	static {
 		IDynamicPatternDetailsAE.FACTORIES.put("te", IDynamicPatternDetailsAE.TileEntityWrapper::create);
 	}
@@ -59,11 +58,15 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);*/
 		return new VirtualPatternHandler(input, output);
 	}
-	public static ICraftingPatternDetails create(ItemStack output, IDynamicPatternDetailsAE handler){
+	public static ICraftingPatternDetails create(IAEItemStack output, IDynamicPatternDetailsAE handler){
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + output.hashCode();
+		result = prime * result + handler.hashCode();
+		return CACHE.computeIfAbsent(result, h -> new VirtualPatternHandler(output.asItemStackRepresentation(), handler));
 		/*NBTTagCompound ot = output.writeToNBT(new NBTTagCompound());
 		ot.setTag(DYNAMIC_PATTERN_ID, IDynamicPatternDetailsAE.save(handler));
 		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);*/
-		return new VirtualPatternHandler(output, handler);
 	}
 	/*private static ICraftingPatternDetails create(NBTTagCompound ot){
 		ItemStack is = new ItemStack(AE2Plugin.virtualPattern);

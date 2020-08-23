@@ -97,7 +97,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	private Map<ItemStack, Integer> toCraft = new HashMap<>();
 	private List<ItemStack> insertingStacks = new ArrayList<>();
 	private final IAEItemStack FAKE_ITEM = ITEMS.createStack(new ItemStack(LogisticsBridge.logisticsFakeItem, 1));
-	private long lastInjectTime;
+	private long lastInjectTime = -1;
 	private OpResult lastPush;
 	private long lastPushTime;
 	private boolean disableLP;
@@ -111,53 +111,65 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	@Override
 	public void update() {
 		if(!world.isRemote){
-			long wt = world.getTotalWorldTime();
-			profiler.startProfiling();
-			if(wt % 40 == 0 && this.getProxy().getNode() != null) {
-				profiler.startSection("Net update (every 40 ticks)");
-				profiler.startSection("Tick AE Inv");
-				boolean changed = meInv.onTick() == TickRateModulation.URGENT;
-				if(changed) {
-					profiler.endStartSection("Refresh AE item list");
-					this.getProxy().getNode().getGrid().postEvent(new MENetworkCellArrayUpdate());
-				}
-				if(reqapi != null) {
-					profiler.endStartSection("Detect crafting changes");
-					changed = reqapi.detectChanged();
-					if(changed) {
-						profiler.endStartSection("Refresh AE");
-						this.getProxy().getNode().getGrid().postEvent(new MENetworkCraftingPatternChange(this, this.getProxy().getNode()));
-					}
-				}
-				profiler.endStartSection("Updating queued crafting");
-				synchronized (toCraft) {
-					toCraft.entrySet().forEach(s -> craftStack(s.getKey(), s.getValue(), false));
-					toCraft.clear();
-				}
-				dynInv.removeEmpties();
-				profiler.endSection();
-				profiler.endSection();
-			}
-			if(lastInjectTime + 200 < wt && this.getProxy().getNode() != null && !dynInv.isEmpty()){
-				profiler.startSection("Empting internal inventory");
-				lastInjectTime = wt - 20;
-				for(int i = 0;i<dynInv.getSizeInventory();i++){
-					dynInv.setInventorySlotContents(i, insertItem(0, dynInv.getStackInSlot(i), false));
-				}
-				dynInv.removeEmpties();
-				profiler.endSection();
-			}
-			profiler.startSection("Emitting fake items");
 			try {
-				ICraftingGrid cg = this.getProxy().getGrid().getCache(ICraftingGrid.class);
-				if(cg.isRequesting(FAKE_ITEM)){
-					insertItem(0, LogisticsBridge.fakeStack(1), false);
+				long wt = world.getTotalWorldTime();
+				profiler.startProfiling();
+				if(wt % 40 == 0 && this.getProxy().getNode() != null) {
+					profiler.startSection("Net update (every 40 ticks)");
+					profiler.startSection("Tick AE Inv");
+					boolean changed = meInv.onTick() == TickRateModulation.URGENT;
+					if(changed) {
+						profiler.endStartSection("Refresh AE item list");
+						this.getProxy().getNode().getGrid().postEvent(new MENetworkCellArrayUpdate());
+					}
+					if(reqapi != null) {
+						profiler.endStartSection("Detect crafting changes");
+						changed = reqapi.detectChanged();
+						if(changed) {
+							profiler.endStartSection("Refresh AE");
+							this.getProxy().getNode().getGrid().postEvent(new MENetworkCraftingPatternChange(this, this.getProxy().getNode()));
+						}
+					}
+					profiler.endStartSection("Updating queued crafting");
+					synchronized (toCraft) {
+						toCraft.entrySet().forEach(s -> craftStack(s.getKey(), s.getValue(), false));
+						toCraft.clear();
+					}
+					dynInv.removeEmpties();
+					profiler.endSection();
+					profiler.endSection();
 				}
-			} catch (GridAccessException e) {
+				if(lastInjectTime == -1)lastInjectTime = wt;
+				else {
+					if(lastInjectTime + 200 < wt && this.getProxy().getNode() != null && !dynInv.isEmpty()){
+						profiler.startSection("Empting internal inventory");
+						emptyInternalInventory();
+						profiler.endSection();
+					}
+					profiler.startSection("Emitting fake items");
+					try {
+						ICraftingGrid cg = this.getProxy().getGrid().getCache(ICraftingGrid.class);
+						if(cg.isRequesting(FAKE_ITEM)){
+							insertItem(0, LogisticsBridge.fakeStack(1), false);
+						}
+					} catch (GridAccessException e) {
+					}
+					profiler.endSection();
+				}
+				profiler.finishProfiling();
+			} catch (RuntimeException e) {
+				e.addSuppressed(new RuntimeException("Profiler stage: " + profiler.lastSection));
+				throw e;
 			}
-			profiler.endSection();
-			profiler.finishProfiling();
 		}
+	}
+
+	private void emptyInternalInventory() {
+		lastInjectTime = world.getTotalWorldTime() - 20;
+		for(int i = 0;i<dynInv.getSizeInventory();i++){
+			dynInv.setInventorySlotContents(i, insertItem(0, dynInv.getStackInSlot(i), false));
+		}
+		dynInv.removeEmpties();
 	}
 
 	@Override
@@ -168,6 +180,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	@Override
 	public List<BridgeStack<ItemStack>> getItems(){
 		if(this.getProxy().getNode() == null || (disableLP && !bridgeMode))return Collections.emptyList();
+		profiler.startSection("getItems");
 		IStorageGrid g = this.getProxy().getNode().getGrid().getCache(IStorageGrid.class);
 		IMEInventoryHandler<IAEItemStack> i = g.getInventory(ITEMS);
 		IItemList<IAEItemStack> items = i.getAvailableItems(ITEMS.createList());
@@ -179,12 +192,14 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 				Stream.concat(insertingStacks.stream(), dynInv.stream())
 				.map(s -> new BridgeStack<>(s, s.getCount(), false, 0))
 				).collect(Collectors.toList());
+		profiler.endSection();
 		return list;
 	}
 
 	@Override
 	public long countItem(ItemStack stack, boolean requestable){
 		if(this.getProxy().getNode() == null || (disableLP && !bridgeMode))return 0;
+		profiler.startSection("countItems");
 		int buffered = 0;
 		for(int i = 0;i<dynInv.getSizeInventory();i++){
 			ItemStack is = dynInv.getStackInSlot(i);
@@ -203,6 +218,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 		IItemList<IAEItemStack> items = i.getAvailableItems(ITEMS.createList());
 		IAEItemStack is = items.findPrecise(ITEMS.createStack(stack));
 		long inAE = is == null ? 0 : requestable ? is.getStackSize()+is.getCountRequestable() : is.getStackSize();
+		profiler.endSection();
 		return inAE + buffered;
 	}
 
@@ -396,10 +412,10 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 				ItemStack r = i.copy();
 				r.setCount(1);
 				fakeItems.add(ITEMS.createStack(LogisticsBridge.fakeStack(r, i.getCount())));
-				return VirtualPatternAE.create(r, wr);
+				return VirtualPatternAE.create(ITEMS.createStack(r), wr);
 			}).forEach(craftings::add);
 			profiler.endStartSection("Wrap VP craft");
-			ci.stream().map(i -> VirtualPatternAE.create(i, wr)).forEach(craftings::add);
+			ci.stream().map(i -> VirtualPatternAE.create(ITEMS.createStack(i), wr)).forEach(craftings::add);
 			profiler.endStartSection("Mount Fake Items");
 			fakeItems.forEach(out::addStorage);
 			profiler.endSection();

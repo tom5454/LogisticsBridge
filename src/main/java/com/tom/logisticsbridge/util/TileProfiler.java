@@ -32,6 +32,8 @@ public class TileProfiler {
 	private final Map<String, Long> avgProfilingMap = Maps.<String, Long>newHashMap();
 	private int cycles;
 
+	public String lastSection;
+
 	public void startProfiling() {
 		if(resultPlayer != null) {
 			profilingEnabled = true;
@@ -53,11 +55,12 @@ public class TileProfiler {
 		if(cycles < 1) {
 			sendResults();
 		}
+
+		lastSection = null;
 	}
 
 	public void startSection(String name) {
-		if (this.profilingEnabled)
-		{
+		if (this.profilingEnabled) {
 			if (!this.profilingSection.isEmpty())
 			{
 				this.profilingSection = this.profilingSection + ".";
@@ -66,6 +69,8 @@ public class TileProfiler {
 			this.profilingSection = this.profilingSection + name;
 			this.sectionList.add(this.profilingSection);
 			this.timestampList.add(Long.valueOf(System.nanoTime()));
+		} else {
+			this.lastSection = name;
 		}
 	}
 
