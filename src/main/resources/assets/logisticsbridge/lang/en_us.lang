@@ -59,6 +59,7 @@ tooltip.logisticsbridge.packageTmp=Package Template for %s
 tooltip.logisticsbridge.packageEmt=Package Empty
 tooltip.logisticsbridge.satID=Satellite ID: %s
 tooltip.logisticsbridge.packageName=%s to %s
+tooltip.logisticsbridge.smartModeOverflow=Recipe input overflow detected! The requested recipe requires more than 9 input ingredients.
 
 chat.logisticsbridge.bridgeDefaultRoute=Bridge Pipe default route: %s
 chat.logisticsbridge.bridgeMode=%s Bridge mode switched to: %s

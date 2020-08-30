@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.InventoryCrafting;
 import net.minecraft.item.ItemStack;
@@ -93,6 +94,12 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	private InvWrapper wrapper = new InvWrapper(dynInv);
 	//private MEMonitorIInventory intInv = new MEMonitorIInventory(new AdaptorItemHandler(wrapper));
 	private static final IItemStorageChannel ITEMS = AE2Plugin.INSTANCE.api.storage().getStorageChannel(IItemStorageChannel.class);
+	private static final IAEItemStack[] OVERFLOW;
+	static {
+		ItemStack is = new ItemStack(Blocks.BARRIER);
+		is.setTranslatableName("tooltip.logisticsbridge.smartModeOverflow");
+		OVERFLOW = new IAEItemStack[] {ITEMS.createStack(is)};
+	}
 	private IItemList<IAEItemStack> fakeItems = ITEMS.createList();
 	private Map<ItemStack, Integer> toCraft = new HashMap<>();
 	private List<ItemStack> insertingStacks = new ArrayList<>();
@@ -103,6 +110,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 	private boolean disableLP;
 	private boolean bridgeMode;
 	private TileProfiler profiler = new TileProfiler("AE Bridge");
+	private boolean updatingAECache;
 
 	public TileEntityBridgeAE() {
 		getProxy().setFlags(GridFlags.REQUIRE_CHANNEL);
@@ -117,7 +125,9 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 				if(wt % 40 == 0 && this.getProxy().getNode() != null) {
 					profiler.startSection("Net update (every 40 ticks)");
 					profiler.startSection("Tick AE Inv");
+					updatingAECache = true;
 					boolean changed = meInv.onTick() == TickRateModulation.URGENT;
+					updatingAECache = false;
 					if(changed) {
 						profiler.endStartSection("Refresh AE item list");
 						this.getProxy().getNode().getGrid().postEvent(new MENetworkCellArrayUpdate());
@@ -389,7 +399,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 
 	@Override
 	public IItemList<IAEItemStack> getAvailableItems(IItemList<IAEItemStack> out) {
-		if(reqapi == null)return out;
+		if(reqapi == null || !updatingAECache)return out;
 		profiler.startSection("getAvailableItems");
 		craftings.clear();
 		fakeItems.resetStatus();
@@ -539,7 +549,11 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 			disableLP = true;
 			boolean craftable = reqapi.getCraftedItems().stream().anyMatch(s -> res.isItemEqual(s));
 			OpResult r = reqapi.simulateRequest(res, 0b0001, true);
-			return Stream.concat(r.missing.stream(), Stream.of(LogisticsBridge.fakeStack(craftable ? null : res, 1))).map(ITEMS::createStack).toArray(IAEItemStack[]::new);
+			IAEItemStack[] inputs = Stream.concat(r.missing.stream(), Stream.of(LogisticsBridge.fakeStack(craftable ? null : res, 1))).map(ITEMS::createStack).toArray(IAEItemStack[]::new);
+			if(inputs.length > 9) {
+				return OVERFLOW;
+			}
+			return inputs;
 		} finally {
 			disableLP = false;
 		}
@@ -578,7 +592,7 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 				}
 				return null;
 			}
-			return ret.toArray(new IAEItemStack[0]);
+			return ret.toArray(new IAEItemStack[ret.size()]);
 		} finally {
 			disableLP = false;
 		}

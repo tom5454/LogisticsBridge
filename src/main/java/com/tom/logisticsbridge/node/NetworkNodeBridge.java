@@ -253,7 +253,7 @@ public class NetworkNodeBridge extends NetworkNode implements IStorageProvider, 
 				}
 				craftingItems.removeEmpties();
 			}
-			if(wt % 5 == 0 && !requestList.isEmpty()) {
+			if(wt % 5 == 0 && !requestList.isEmpty() && reqapi != null) {
 				ItemStack toReq = requestList.pop();
 				OpResult opres = reqapi.performRequest(toReq, true);
 				boolean pushed = opres.missing.isEmpty();
