@@ -399,7 +399,13 @@ IItemHandlerModifiable, IDynamicPatternDetailsAE, IBridge {
 
 	@Override
 	public IItemList<IAEItemStack> getAvailableItems(IItemList<IAEItemStack> out) {
-		if(reqapi == null || !updatingAECache)return out;
+		if(reqapi == null)return out;
+		/*if(!updatingAECache) {
+			updatingAECache = true;
+			meInv.getAvailableItems(out);
+			updatingAECache = false;
+			return out;
+		}*/
 		profiler.startSection("getAvailableItems");
 		craftings.clear();
 		fakeItems.resetStatus();

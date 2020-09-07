@@ -33,13 +33,16 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 	static {
 		IDynamicPatternDetailsAE.FACTORIES.put("te", IDynamicPatternDetailsAE.TileEntityWrapper::create);
 	}
+
 	public VirtualPatternAE() {
 		setUnlocalizedName("lb.virtPattern");
 	}
+
 	@Override
 	public ICraftingPatternDetails getPatternForItem(ItemStack is, World w) {
 		return getPatternForItem(is);
 	}
+
 	private static ICraftingPatternDetails getPatternForItem(ItemStack is) {
 		try {
 			return new VirtualPatternHandler(is);
@@ -47,50 +50,24 @@ public class VirtualPatternAE extends Item implements ICraftingPatternItem {
 			return null;
 		}
 	}
-	/*public static ICraftingPatternDetails create(ItemStack output){
-		NBTTagCompound ot = output.writeToNBT(new NBTTagCompound());
-		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);
-	}*/
+
 	public static ICraftingPatternDetails create(ItemStack input, ItemStack output){
-		/*NBTTagCompound ot = new NBTTagCompound();
-		ot.setTag("in", input.writeToNBT(new NBTTagCompound()));
-		ot.setTag("out", output.writeToNBT(new NBTTagCompound()));
-		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);*/
 		return new VirtualPatternHandler(input, output);
 	}
+
 	public static ICraftingPatternDetails create(IAEItemStack output, IDynamicPatternDetailsAE handler){
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + output.hashCode();
 		result = prime * result + handler.hashCode();
 		return CACHE.computeIfAbsent(result, h -> new VirtualPatternHandler(output.asItemStackRepresentation(), handler));
-		/*NBTTagCompound ot = output.writeToNBT(new NBTTagCompound());
-		ot.setTag(DYNAMIC_PATTERN_ID, IDynamicPatternDetailsAE.save(handler));
-		return CACHE.computeIfAbsent(ot, VirtualPatternAE::create);*/
 	}
-	/*private static ICraftingPatternDetails create(NBTTagCompound ot){
-		ItemStack is = new ItemStack(AE2Plugin.virtualPattern);
-		NBTTagCompound dyTag = ot.getCompoundTag(DYNAMIC_PATTERN_ID);
-		ot.removeTag(DYNAMIC_PATTERN_ID);
-		NBTTagCompound in = ot.getCompoundTag("in");
-		NBTTagCompound out = ot.getCompoundTag("out");
-		if(!out.hasNoTags())ot = out;
-		is.setTagCompound(new NBTTagCompound());
-		NBTTagCompound tag = is.getTagCompound();
-		tag.setTag("out", ot);
-		NBTTagList list = new NBTTagList();
-		tag.setTag("in", list);
-		if(in.hasNoTags())
-			list.appendTag(new ItemStack(LogisticsBridge.logisticsFakeItem).writeToNBT(new NBTTagCompound()));
-		else
-			list.appendTag(in);
-		if(!dyTag.hasNoTags())tag.setTag("dynamic", dyTag);
-		return getPatternForItem(is);
-	}*/
+
 	@Override
 	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
 		tooltip.add(I18n.format("tooltip.logisticsbridge.techItem"));
 	}
+
 	public static class VirtualPatternHandler implements ICraftingPatternDetails, Comparable<VirtualPatternHandler> {
 		private final ItemStack patternItem, result;
 		private final IAEItemStack[] condensedInputs;
