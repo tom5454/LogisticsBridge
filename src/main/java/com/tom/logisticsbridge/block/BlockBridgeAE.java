@@ -1,5 +1,7 @@
 package com.tom.logisticsbridge.block;
 
+import appeng.block.AEBaseTileBlock;
+import com.tom.logisticsbridge.tileentity.TileEntityBridgeAE;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
@@ -8,11 +10,8 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import com.tom.logisticsbridge.tileentity.TileEntityBridgeAE;
 
-import appeng.block.AEBaseTileBlock;
-
-public class BlockBridgeAE extends AEBaseTileBlock {
+public class BlockBridgeAE extends AEBaseTileBlock{
 
 	public BlockBridgeAE() {
 		super(Material.IRON);

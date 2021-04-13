@@ -47,7 +47,7 @@ import logisticspipes.logisticspipes.IRoutedItem.TransportMode;
 import logisticspipes.modules.LogisticsModule;
 import logisticspipes.modules.LogisticsModule.ModulePositionType;
 import logisticspipes.pipefxhandlers.Particles;
-import logisticspipes.pipes.PipeLogisticsChassi.ChassiTargetInformation;
+import logisticspipes.pipes.PipeLogisticsChassis.ChassiTargetInformation;
 import logisticspipes.pipes.basic.CoreRoutedPipe;
 import logisticspipes.proxy.MainProxy;
 import logisticspipes.proxy.SimpleServiceLocator;
@@ -365,7 +365,7 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		}
 	}
 	/**
-	 * @param list <item, amount>
+	 * @param items <item, amount>
 	 * */
 	@Override
 	public void getAllItems(Map<ItemIdentifier, Integer> items, List<IFilter> filters) {
@@ -778,7 +778,6 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 		}
 	}
 
-	@Override
 	public boolean disconnectPipe(TileEntity tile, EnumFacing dir) {
 		return dir.getAxis() == Axis.Y && tile instanceof IBridge ? true : false;
 	}

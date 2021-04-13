@@ -1,13 +1,14 @@
 package com.tom.logisticsbridge.pipe;
 
 import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
-import java.util.stream.Collectors;
+import java.util.*;
 
+import com.tom.logisticsbridge.network.SyncResultNamePacket;
+import logisticspipes.blocks.crafting.LogisticsCraftingTableTileEntity;
+import logisticspipes.interfaces.IPipeServiceProvider;
+import logisticspipes.interfaces.ISlotUpgradeManager;
+import logisticspipes.network.abstractpackets.CoordinatesPacket;
+import logisticspipes.utils.PlayerCollectionList;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -53,7 +54,6 @@ import logisticspipes.routing.LogisticsPromise;
 import logisticspipes.routing.order.IOrderInfoProvider.ResourceType;
 import logisticspipes.routing.order.LogisticsItemOrder;
 import logisticspipes.routing.order.LogisticsItemOrderManager;
-import logisticspipes.routing.pathfinder.IPipeInformationProvider.ConnectionPipeType;
 import logisticspipes.textures.Textures;
 import logisticspipes.textures.Textures.TextureType;
 import logisticspipes.utils.CacheHolder.CacheTypes;
@@ -62,11 +62,24 @@ import logisticspipes.utils.SinkReply.BufferMode;
 import logisticspipes.utils.item.ItemIdentifier;
 import logisticspipes.utils.item.ItemIdentifierInventory;
 import logisticspipes.utils.item.ItemIdentifierStack;
+import network.rs485.logisticspipes.SatellitePipe;
+import network.rs485.logisticspipes.connection.Adjacent;
+import network.rs485.logisticspipes.connection.LPNeighborTileEntityKt;
 import network.rs485.logisticspipes.connection.NeighborTileEntity;
-import network.rs485.logisticspipes.world.WorldCoordinatesWrapper;
+import network.rs485.logisticspipes.connection.SingleAdjacent;
 
-public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems, IChangeListener {
+import javax.annotation.Nonnull;
+
+public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems, IChangeListener, SatellitePipe {
+
 	public static TextureType TEXTURE = Textures.empty;
+	public final PlayerCollectionList localModeWatchers = new PlayerCollectionList();
+	public static final Set<ResultPipe> AllResults = Collections.newSetFromMap(new WeakHashMap<>());
+
+	private String resultPipeName = "";
+	private boolean cachedAreAllOrderesToBuffer;
+	private WeakReference<TileEntity> lastAccessedCrafter = new WeakReference<>(null);
+
 	public ResultPipe(Item item) {
 		super(item);
 		_orderItemManager = new LogisticsItemOrderManager(this, this);
@@ -87,44 +100,38 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 		return null;
 	}
 
-	public static Set<ResultPipe> AllResults = Collections.newSetFromMap(new WeakHashMap<>());;
-
 	// called only on server shutdown
 	public static void cleanup() {
 		AllResults.clear();
 	}
 
-	public String id;
-	private boolean cachedAreAllOrderesToBuffer;
-	private WeakReference<TileEntity> lastAccessedCrafter;
-	private List<NeighborTileEntity<TileEntity>> cachedCrafters = null;
-
 	@Override
 	public void readFromNBT(NBTTagCompound nbttagcompound) {
 		super.readFromNBT(nbttagcompound);
-		id = nbttagcompound.getString("resultname");
 		if(nbttagcompound.hasKey("resultid")){
-			id = Integer.toString(nbttagcompound.getInteger("resultid"));
+			resultPipeName = Integer.toString(nbttagcompound.getInteger("resultid"));
 		}
-		ensureAllSatelliteStatus();
+		else{
+			resultPipeName = nbttagcompound.getString("resultname");
+		}
+
+		if (MainProxy.isServer(getWorld())) {
+			ensureAllSatelliteStatus();
+		}
 	}
 
 	@Override
 	public void writeToNBT(NBTTagCompound nbttagcompound) {
-		if(id != null)nbttagcompound.setString("resultname", id);
+		if(resultPipeName != null)nbttagcompound.setString("resultname", resultPipeName);
 		super.writeToNBT(nbttagcompound);
 	}
 
-	@SuppressWarnings("deprecation")
-	protected void ensureAllSatelliteStatus() {
-		if (MainProxy.isClient()) {
-			return;
+	public void ensureAllSatelliteStatus() {
+		if(resultPipeName.isEmpty()){
+			ResultPipe.AllResults.remove(this);
 		}
-		if (id.isEmpty() && AllResults.contains(this)) {
-			AllResults.remove(this);
-		}
-		if (!id.isEmpty() || !AllResults.contains(this)) {
-			AllResults.add(this);
+		if(!resultPipeName.isEmpty()){
+			ResultPipe.AllResults.add(this);
 		}
 	}
 
@@ -133,9 +140,9 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 		if (MainProxy.isClient(getWorld())) {
 			return;
 		}
-		if (AllResults.contains(this)) {
-			AllResults.remove(this);
-		}
+
+		ResultPipe.AllResults.remove(this);
+
 		while (_orderItemManager.hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA)) {
 			_orderItemManager.sendFailed();
 		}
@@ -144,7 +151,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 	@Override
 	public void onWrenchClicked(EntityPlayer entityplayer) {
 		// Send the satellite id when opening gui
-		final ModernPacket packet = PacketHandler.getPacket(SetIDPacket.class).setName(id).setId(0).setPosX(getX()).setPosY(getY()).setPosZ(getZ());
+		final ModernPacket packet = PacketHandler.getPacket(SyncResultNamePacket.class).setString(resultPipeName).setPosX(getX()).setPosY(getY()).setPosZ(getZ());
 		MainProxy.sendPacketToPlayer(packet, entityplayer);
 		entityplayer.openGui(LogisticsBridge.modInstance, GuiIDs.ResultPipe.ordinal(), getWorld(), getX(), getY(), getZ());
 	}
@@ -157,12 +164,12 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 			final ModernPacket packet = PacketHandler.getPacket(SetIDPacket.class).setName(integer).setId(fid).setPosX(getX()).setPosY(getY()).setPosZ(getZ());
 			MainProxy.sendPacketToPlayer(packet, player);
 		}
-		this.id = integer;
+		this.resultPipeName = integer;
 		ensureAllSatelliteStatus();
 	}
 	@Override
 	public String getPipeID(int fid) {
-		return id;
+		return resultPipeName;
 	}
 
 	@Override
@@ -196,15 +203,11 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 				cacheAreAllOrderesToBuffer();
 			}
 			if (getItemOrderManager().isFirstOrderWatched()) {
-				if(lastAccessedCrafter == null) {
-					getItemOrderManager().setMachineProgress((byte) 0);
+				TileEntity tile = lastAccessedCrafter.get();
+				if (tile != null) {
+					getItemOrderManager().setMachineProgress(SimpleServiceLocator.machineProgressProvider.getProgressForTile(tile));
 				} else {
-					TileEntity tile = lastAccessedCrafter.get();
-					if (tile != null) {
-						getItemOrderManager().setMachineProgress(SimpleServiceLocator.machineProgressProvider.getProgressForTile(tile));
-					} else {
-						getItemOrderManager().setMachineProgress((byte) 0);
-					}
+					getItemOrderManager().setMachineProgress((byte) 0);
 				}
 			}
 		} else {
@@ -219,8 +222,9 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 			return;
 		}
 
-		List<NeighborTileEntity<TileEntity>> adjacentCrafters = locateCrafters();
-		if (adjacentCrafters.size() < 1) {
+		final List<NeighborTileEntity<TileEntity>> adjacentInventories = getAvailableAdjacent().inventories();
+
+		if (adjacentInventories.size() < 1) {
 			if (getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA)) {
 				getItemOrderManager().sendFailed();
 			}
@@ -236,31 +240,32 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 			int maxtosend = Math.min(itemsleft, nextOrder.getResource().stack.getStackSize());
 			maxtosend = Math.min(nextOrder.getResource().getItem().getMaxStackSize(), maxtosend);
 			// retrieve the new crafted items
-			ItemStack extracted = null;
-			NeighborTileEntity<TileEntity> adjacent = null;
-			for (NeighborTileEntity<TileEntity> adjacentCrafter : adjacentCrafters) {
+			ItemStack extracted = ItemStack.EMPTY;
+			NeighborTileEntity<TileEntity> adjacent = null; // there has to be at least one adjacentCrafter at this point; adjacent wont stay null
+			for (NeighborTileEntity<TileEntity> adjacentCrafter : adjacentInventories) {
 				adjacent = adjacentCrafter;
 				extracted = extract(adjacent, nextOrder.getResource(), maxtosend);
-				if (extracted != null && extracted.getCount() > 0) {
+				if (!extracted.isEmpty()) {
 					break;
 				}
 			}
-			if (extracted == null || extracted.getCount() == 0) {
+			if (extracted.isEmpty()) {
 				getItemOrderManager().deferSend();
 				break;
 			}
 			getCacheHolder().trigger(CacheTypes.Inventory);
+			Objects.requireNonNull(adjacent);
 			lastAccessedCrafter = new WeakReference<>(adjacent.getTileEntity());
 			// send the new crafted items to the destination
 			ItemIdentifier extractedID = ItemIdentifier.get(extracted);
-			while (extracted.getCount() > 0) {
-				if (!doesExtractionMatch(nextOrder, extractedID)) {
+			while (!extracted.isEmpty()) {
+				if (isExtractedMismatch(nextOrder, extractedID)) {
 					LogisticsItemOrder startOrder = nextOrder;
 					if (getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA)) {
 						do {
 							getItemOrderManager().deferSend();
 							nextOrder = getItemOrderManager().peekAtTopRequest(ResourceType.CRAFTING, ResourceType.EXTRA);
-						} while (!doesExtractionMatch(nextOrder, extractedID) && startOrder != nextOrder);
+						} while (isExtractedMismatch(nextOrder, extractedID) && startOrder != nextOrder);
 					}
 					if (startOrder == nextOrder) {
 						int numtosend = Math.min(extracted.getCount(), extractedID.getMaxStackSize());
@@ -272,7 +277,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 						ItemStack stackToSend = extracted.splitStack(numtosend);
 						//Route the unhandled item
 
-						sendStack(stackToSend, -1, ItemSendMode.Normal, null);
+						sendStack(stackToSend, -1, ItemSendMode.Normal, null, adjacent.getDirection());
 						continue;
 					}
 				}
@@ -297,7 +302,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 					queueRoutedItem(item, adjacent.getDirection());
 					getItemOrderManager().sendSuccessfull(stackToSend.getCount(), defersend, item);
 				} else {
-					sendStack(stackToSend, -1, ItemSendMode.Normal, nextOrder.getInformation());
+					sendStack(stackToSend, -1, ItemSendMode.Normal, nextOrder.getInformation(), adjacent.getDirection());
 					getItemOrderManager().sendSuccessfull(stackToSend.getCount(), false, null);
 				}
 				if (getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA)) {
@@ -307,9 +312,11 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 		}
 
 	}
-	private boolean doesExtractionMatch(LogisticsItemOrder nextOrder, ItemIdentifier extractedID) {
-		return nextOrder.getResource().getItem().equals(extractedID) || (this.getUpgradeManager().isFuzzyUpgrade() && nextOrder.getResource().getBitSet().nextSetBit(0) != -1 && nextOrder.getResource().matches(extractedID, IResource.MatchSettings.NORMAL));
+
+	private boolean isExtractedMismatch(LogisticsItemOrder nextOrder, ItemIdentifier extractedID) {
+		return !nextOrder.getResource().getItem().equals(extractedID) && (!getUpgradeManager().isFuzzyUpgrade() || (nextOrder.getResource().getBitSet().nextSetBit(0) == -1) || !nextOrder.getResource().matches(extractedID, IResource.MatchSettings.NORMAL));
 	}
+
 	@Override
 	public void getAllItems(Map<ItemIdentifier, Integer> list, List<IFilter> filter) {
 
@@ -317,9 +324,6 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 
 	@Override
 	public void listenedChanged() {
-	}
-	public boolean areAllOrderesToBuffer() {
-		return cachedAreAllOrderesToBuffer;
 	}
 
 	public void cacheAreAllOrderesToBuffer() {
@@ -353,27 +357,21 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 	public UpgradeManager getUpgradeManager() {
 		return upgradeManager;
 	}
-	public List<NeighborTileEntity<TileEntity>> locateCrafters() {
-		if (cachedCrafters == null) {
-			cachedCrafters = new WorldCoordinatesWrapper(getWorld(), getPos())
-					.connectedTileEntities(ConnectionPipeType.ITEM)
-					.filter(neighbor -> neighbor.isItemHandler() || neighbor.getInventoryUtil() != null)
-					.collect(Collectors.toList());
-		}
-		return cachedCrafters;
-	}
+
+	@Nonnull
 	private ItemStack extract(NeighborTileEntity<TileEntity> adjacent, IResource item, int amount) {
-		if (adjacent.getTileEntity().hasCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, adjacent.getDirection().getOpposite())) {
-			return extractFromInventory(adjacent.getTileEntity(), item, amount, adjacent.getDirection());
-		}
-		return null;
+		final IInventoryUtil invUtil = LPNeighborTileEntityKt.getInventoryUtil(adjacent);
+		if (invUtil == null) return ItemStack.EMPTY;
+		return extractFromInventory(invUtil, item, amount);
 	}
-	private ItemStack extractFromInventory(TileEntity inv, IResource wanteditem, int count, EnumFacing dir) {
-		IInventoryUtil invUtil = SimpleServiceLocator.inventoryUtilFactory.getInventoryUtil(inv, dir.getOpposite());
+
+	@Nonnull
+	private ItemStack extractFromInventory(@Nonnull IInventoryUtil invUtil, IResource wanteditem, int count) {
+
 		ItemIdentifier itemToExtract = null;
-		if(wanteditem instanceof ItemResource) {
+		if (wanteditem instanceof ItemResource) {
 			itemToExtract = ((ItemResource) wanteditem).getItem();
-		} else if(wanteditem instanceof DictResource) {
+		} else if (wanteditem instanceof DictResource) {
 			int max = Integer.MIN_VALUE;
 			ItemIdentifier toExtract = null;
 			for (Map.Entry<ItemIdentifier, Integer> content : invUtil.getItemsAndCount().entrySet()) {
@@ -384,68 +382,58 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 					}
 				}
 			}
-			if(toExtract == null) {
-				return null;
+			if (toExtract == null) {
+				return ItemStack.EMPTY;
 			}
 			itemToExtract = toExtract;
 		}
+		if (itemToExtract == null) return ItemStack.EMPTY;
 		int available = invUtil.itemCount(itemToExtract);
-		if (available == 0) {
-			return null;
+		if (available == 0 || !canUseEnergy(neededEnergy() * Math.min(count, available))) {
+			return ItemStack.EMPTY;
 		}
-		if (!useEnergy(neededEnergy() * Math.min(count, available))) {
-			return null;
-		}
-		return invUtil.getMultipleItems(itemToExtract, Math.min(count, available));
+		ItemStack extracted = invUtil.getMultipleItems(itemToExtract, Math.min(count, available));
+		useEnergy(neededEnergy() * extracted.getCount());
+		return extracted;
 	}
-	private ItemStack extractFromInventoryFiltered(TileEntity inv, ItemIdentifierInventory filter, boolean isExcluded, int filterInvLimit, EnumFacing dir) {
-		IInventoryUtil invUtil = SimpleServiceLocator.inventoryUtilFactory.getInventoryUtil(inv, dir.getOpposite());
+
+	@Nonnull
+	private ItemStack extractFromInventoryFiltered(@Nonnull IInventoryUtil invUtil, ItemIdentifierInventory filter, boolean isExcluded, int filterInvLimit) {
 		ItemIdentifier wanteditem = null;
+		boolean found = false;
 		for (ItemIdentifier item : invUtil.getItemsAndCount().keySet()) {
-			if (isExcluded) {
-				boolean found = false;
-				for (int i = 0; i < filter.getSizeInventory() && i < filterInvLimit; i++) {
-					ItemIdentifierStack identStack = filter.getIDStackInSlot(i);
-					if (identStack == null) {
-						continue;
-					}
-					if (identStack.getItem().equalsWithoutNBT(item)) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					wanteditem = item;
-				}
-			} else {
-				boolean found = false;
-				for (int i = 0; i < filter.getSizeInventory() && i < filterInvLimit; i++) {
-					ItemIdentifierStack identStack = filter.getIDStackInSlot(i);
-					if (identStack == null) {
-						continue;
-					}
-					if (identStack.getItem().equalsWithoutNBT(item)) {
-						found = true;
-						break;
-					}
-				}
-				if (found) {
-					wanteditem = item;
-				}
+			found = isFiltered(filter, filterInvLimit, item, found);
+			if (isExcluded != found) {
+				wanteditem = item;
+				break;
 			}
 		}
 		if (wanteditem == null) {
-			return null;
+			return ItemStack.EMPTY;
 		}
 		int available = invUtil.itemCount(wanteditem);
-		if (available == 0) {
-			return null;
+		if (available == 0 || !canUseEnergy(neededEnergy() * Math.min(64, available))) {
+			return ItemStack.EMPTY;
 		}
-		if (!useEnergy(neededEnergy() * Math.min(64, available))) {
-			return null;
-		}
-		return invUtil.getMultipleItems(wanteditem, Math.min(64, available));
+		ItemStack extracted = invUtil.getMultipleItems(wanteditem, Math.min(64, available));
+		useEnergy(neededEnergy() * extracted.getCount());
+		return extracted;
 	}
+
+	private boolean isFiltered(ItemIdentifierInventory filter, int filterInvLimit, ItemIdentifier item, boolean found) {
+		for (int i = 0; i < filter.getSizeInventory() && i < filterInvLimit; i++) {
+			ItemIdentifierStack identStack = filter.getIDStackInSlot(i);
+			if (identStack == null) {
+				continue;
+			}
+			if (identStack.getItem().equalsWithoutNBT(item)) {
+				found = true;
+				break;
+			}
+		}
+		return found;
+	}
+
 	@Override
 	public String getName(int id) {
 		return "gui.resultPipe.id";
@@ -462,36 +450,76 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 	}
 
 	public String getResultPipeName() {
-		return id;
+		return resultPipeName;
 	}
 
 	public void extractCleanup(ItemIdentifierInventory _cleanupInventory, boolean cleanupModeIsExclude, int i) {
-		List<NeighborTileEntity<TileEntity>> adjacentCrafters = locateCrafters();
-		if (adjacentCrafters.size() > 0) {
-			ItemStack extracted = null;
-			NeighborTileEntity<TileEntity> adjacent = null;
-			for (NeighborTileEntity<TileEntity> adjacentCrafter : adjacentCrafters) {
-				adjacent = adjacentCrafter;
-				extracted = extractFromInventoryFiltered(adjacent.getTileEntity(), _cleanupInventory, cleanupModeIsExclude, i, adjacent.getDirection());
-				if (extracted != null && extracted.getCount() > 0) {
-					break;
-				}
+		final List<NeighborTileEntity<TileEntity>> adjacentInventories = getAvailableAdjacent().inventories();
+
+		if (!getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA)) {
+			final ISlotUpgradeManager upgradeManager = Objects.requireNonNull(getUpgradeManager());
+			if (upgradeManager.getCrafterCleanup() > 0) {
+				adjacentInventories.stream()
+						.map(neighbor -> extractFiltered(neighbor, _cleanupInventory, cleanupModeIsExclude, upgradeManager.getCrafterCleanup() * 3))
+						.filter(stack -> !stack.isEmpty())
+						.findFirst()
+						.ifPresent(extracted -> {
+							queueRoutedItem(SimpleServiceLocator.routedItemHelper.createNewTravelItem(extracted), EnumFacing.UP);
+							getCacheHolder().trigger(CacheTypes.Inventory);
+						});
 			}
-			if (extracted == null || extracted.getCount() == 0) {
-				return;
-			}
-			queueRoutedItem(SimpleServiceLocator.routedItemHelper.createNewTravelItem(extracted), EnumFacing.UP);
-			getCacheHolder().trigger(CacheTypes.Inventory);
+			return;
 		}
 	}
 
-	public boolean hasRequests() {
-		return getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA);
+	@Nonnull
+	private ItemStack extractFiltered(NeighborTileEntity<TileEntity> neighbor, ItemIdentifierInventory inv, boolean isExcluded, int filterInvLimit) {
+		final IInventoryUtil invUtil = LPNeighborTileEntityKt.getInventoryUtil(neighbor);
+		if (invUtil == null) return ItemStack.EMPTY;
+		return extractFromInventoryFiltered(invUtil, inv, isExcluded, filterInvLimit);
 	}
 
 	@Override
-	public void onNeighborBlockChange() {
-		clearCache();
-		super.onNeighborBlockChange();
+	public void playerStartWatching(EntityPlayer player, int mode) {
+		if (mode == 1) {
+			localModeWatchers.add(player);
+			final ModernPacket packet = PacketHandler.getPacket(SyncResultNamePacket.class).setString((this).resultPipeName).setPosX(getX()).setPosY(getY()).setPosZ(getZ());
+			MainProxy.sendPacketToPlayer(packet, player);
+		} else {
+			super.playerStartWatching(player, mode);
+		}
+	}
+
+	@Override
+	public void playerStopWatching(EntityPlayer player, int mode) {
+		super.playerStopWatching(player, mode);
+		localModeWatchers.remove(player);
+	}
+
+	@Override
+	public List<ItemIdentifierStack> getItemList() {
+		return null;
+	}
+
+	@Override
+	public String getSatellitePipeName() {
+		return resultPipeName;
+	}
+
+	@Override
+	public void setSatellitePipeName(@Nonnull String s) {
+		this.resultPipeName = s;
+	}
+
+	@Override
+	public Set<SatellitePipe> getSatellitesOfType() {
+		return Collections.unmodifiableSet(AllResults);
+	}
+
+	@Override
+	public void updateWatchers() {
+		CoordinatesPacket packet = PacketHandler.getPacket(SyncResultNamePacket.class).setString(resultPipeName).setTilePos(this.getContainer());
+		MainProxy.sendToPlayerList(packet, localModeWatchers);
+		MainProxy.sendPacketToAllWatchingChunk(this.getContainer(), packet);
 	}
 }

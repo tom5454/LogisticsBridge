@@ -5,7 +5,7 @@ import net.minecraft.item.ItemStack;
 
 import com.tom.logisticsbridge.pipe.CraftingManager;
 
-import logisticspipes.network.guis.pipe.ChassiGuiProvider;
+import logisticspipes.network.guis.pipe.ChassisGuiProvider;
 import logisticspipes.pipes.upgrades.ModuleUpgradeManager;
 import logisticspipes.utils.gui.DummyContainer;
 import logisticspipes.utils.gui.ModuleSlot;
@@ -44,8 +44,8 @@ public class ContainerCraftingManager extends DummyContainer {
 			{
 				final int fI = l + k * 9;
 				ModuleUpgradeManager upgradeManager = pipe.getModuleUpgradeManager(fI);
-				addUpgradeSlot(0, upgradeManager, 0, Integer.MIN_VALUE, Integer.MIN_VALUE, itemStack -> ChassiGuiProvider.checkStack(itemStack, pipe, fI));
-				addUpgradeSlot(1, upgradeManager, 1, Integer.MIN_VALUE, Integer.MIN_VALUE, itemStack -> ChassiGuiProvider.checkStack(itemStack, pipe, fI));
+				addUpgradeSlot(0, upgradeManager, 0, Integer.MIN_VALUE, Integer.MIN_VALUE, itemStack -> ChassisGuiProvider.checkStack(itemStack, pipe, fI));
+				addUpgradeSlot(1, upgradeManager, 1, Integer.MIN_VALUE, Integer.MIN_VALUE, itemStack -> ChassisGuiProvider.checkStack(itemStack, pipe, fI));
 			}
 		}
 		//}

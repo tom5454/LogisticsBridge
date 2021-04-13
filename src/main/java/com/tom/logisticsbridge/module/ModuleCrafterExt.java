@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import logisticspipes.modules.ChassisModule;
 import org.apache.commons.lang3.tuple.Pair;
 
 import net.minecraft.entity.player.EntityPlayer;
@@ -15,7 +16,6 @@ import logisticspipes.interfaces.routing.IAdditionalTargetInformation;
 import logisticspipes.interfaces.routing.IFilter;
 import logisticspipes.interfaces.routing.IRequestFluid;
 import logisticspipes.interfaces.routing.IRequestItems;
-import logisticspipes.modules.ChassiModule;
 import logisticspipes.modules.ModuleCrafter;
 import logisticspipes.pipes.basic.CoreRoutedPipe;
 import logisticspipes.proxy.MainProxy;
@@ -293,7 +293,8 @@ public class ModuleCrafterExt extends ModuleCrafter {
 		return res.fullFill(promise, destination, info);
 	}
 	@Override
-	public void openAttachedGui(EntityPlayer player) {
+	public boolean openAttachedGui(EntityPlayer player) {
+		return false;
 	}
 	@Override
 	public void registerExtras(IPromise promise) {
@@ -335,7 +336,7 @@ public class ModuleCrafterExt extends ModuleCrafter {
 		if(MainProxy.isClient(_world.getWorld()))return;
 		if(!(_service instanceof CraftingManager))return;
 		CraftingManager mngr = (CraftingManager) _service;
-		ChassiModule m = mngr.getModules();
+		ChassisModule m = mngr.getModules();
 		for(int i = 0;i<27;i++) {
 			if(m.getModule(i) == this) {
 				mngr.save(i);
@@ -344,7 +345,7 @@ public class ModuleCrafterExt extends ModuleCrafter {
 		}
 	}
 
-	public static class BufferInformation extends CraftingChassieInformation {
+	public static class BufferInformation extends CraftingChassisInformation {
 
 		public BufferInformation(int craftingSlot, int moduleSlot) {
 			super(craftingSlot, moduleSlot);

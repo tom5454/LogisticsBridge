@@ -27,6 +27,7 @@ import appeng.api.util.AEPartLocation;
 import logisticspipes.pipes.basic.CoreUnroutedPipe;
 import logisticspipes.pipes.basic.LogisticsTileGenericPipe;
 import logisticspipes.utils.gui.DummyContainer;
+import network.rs485.logisticspipes.SatellitePipe;
 
 public class GuiHandler implements IGuiHandler {
 	public static enum GuiIDs {
@@ -101,7 +102,7 @@ public class GuiHandler implements IGuiHandler {
 			if( TE instanceof IPartHost ) {
 				final IPart part = ( (IPartHost) TE ).getPart( side );
 				if(part instanceof PartSatelliteBus){
-					return new GuiResultPipe((IIdPipe) part, player, 0);
+					return new GuiResultPipe((SatellitePipe) part);
 				}
 			}
 			return null;
@@ -109,7 +110,7 @@ public class GuiHandler implements IGuiHandler {
 		if(ID == 5){
 			final TileEntity TE = world.getTileEntity( new BlockPos( x, y, z ) );
 			if (TE != null && TE instanceof IIdPipe) {
-				return new GuiResultPipe((IIdPipe) TE, player, 0);
+				return new GuiResultPipe((SatellitePipe) TE);
 			}
 			return null;
 		}
@@ -118,7 +119,7 @@ public class GuiHandler implements IGuiHandler {
 		{
 			CoreUnroutedPipe pipe = getPipe(world, x, y, z);
 			if (pipe != null && pipe instanceof IIdPipe) {
-				return new GuiResultPipe((IIdPipe) pipe, player, 0);
+				return new GuiResultPipe((SatellitePipe) pipe);
 			}
 		}
 		break;

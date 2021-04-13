@@ -67,6 +67,9 @@ chat.logisticsbridge.bridgeMode.simple=Simple Mode
 chat.logisticsbridge.bridgeMode.smart=Smart Mode
 
 gui.resultPipe.id=Result Pipe ID
+gui.resultPipe.naming_result.success=Success
+gui.resultPipe.naming_result.duplicate_name=Name already used.
+gui.resultPipe.naming_result.blank_name=Name can't be blank.
 gui.craftingManager=Crafting Manager
 gui.craftingManager.openCfg=Open Config
 gui.craftingManager.pickupUpgrade=Pickup Upgrade from Slot #%d

@@ -1,57 +1,31 @@
 package com.tom.logisticsbridge.pipe;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.tuple.Pair;
-
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.InventoryBasic;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.text.TextComponentTranslation;
-
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-
 import com.tom.logisticsbridge.GuiHandler.GuiIDs;
 import com.tom.logisticsbridge.LogisticsBridge;
 import com.tom.logisticsbridge.module.BufferUpgrade;
 import com.tom.logisticsbridge.module.ModuleCrafterExt;
 import com.tom.logisticsbridge.network.SetIDPacket;
 import com.tom.logisticsbridge.network.SetIDPacket.IIdPipe;
-
 import logisticspipes.LPItems;
-import logisticspipes.gui.GuiChassiPipe;
+import logisticspipes.gui.GuiChassisPipe;
 import logisticspipes.interfaces.IHeadUpDisplayRenderer;
 import logisticspipes.interfaces.IInventoryUtil;
 import logisticspipes.interfaces.IPipeServiceProvider;
 import logisticspipes.interfaces.IWorldProvider;
 import logisticspipes.interfaces.routing.IRequestItems;
 import logisticspipes.items.ItemModule;
+import logisticspipes.items.ItemUpgrade;
 import logisticspipes.logisticspipes.ItemModuleInformationManager;
-import logisticspipes.modules.ChassiModule;
+import logisticspipes.modules.ChassisModule;
 import logisticspipes.modules.LogisticsModule;
 import logisticspipes.modules.LogisticsModule.ModulePositionType;
 import logisticspipes.modules.ModuleCrafter;
 import logisticspipes.network.PacketHandler;
 import logisticspipes.network.abstractpackets.ModernPacket;
-import logisticspipes.network.guis.pipe.ChassiGuiProvider;
+import logisticspipes.network.guis.pipe.ChassisGuiProvider;
 import logisticspipes.pipefxhandlers.Particles;
 import logisticspipes.pipes.PipeItemsSatelliteLogistics;
-import logisticspipes.pipes.PipeLogisticsChassi;
-import logisticspipes.pipes.upgrades.UpgradeManager;
+import logisticspipes.pipes.PipeLogisticsChassis;
 import logisticspipes.proxy.MainProxy;
 import logisticspipes.proxy.SimpleServiceLocator;
 import logisticspipes.routing.IRouter;
@@ -60,9 +34,25 @@ import logisticspipes.textures.Textures;
 import logisticspipes.textures.Textures.TextureType;
 import logisticspipes.utils.item.ItemIdentifier;
 import logisticspipes.utils.item.ItemIdentifierStack;
-import network.rs485.logisticspipes.connection.NeighborTileEntity;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.InventoryBasic;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraftforge.fml.client.FMLClientHandler;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+import network.rs485.logisticspipes.connection.LPNeighborTileEntityKt;
+import org.apache.commons.lang3.tuple.Pair;
 
-public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
+import javax.annotation.Nonnull;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class CraftingManager extends PipeLogisticsChassis implements IIdPipe {
 	private List<List<Pair<IRequestItems, ItemIdentifierStack>>> buffered = new ArrayList<>();
 	public static TextureType TEXTURE = Textures.empty;
 	public String satelliteId, resultId;
@@ -77,12 +67,6 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 
 	public CraftingManager(Item item) {
 		super(item);
-		upgradeManager = new UpgradeManager(this) {
-			@Override
-			public boolean hasUpgradeModuleUpgrade() {
-				return false;//Crashes with gui
-			}
-		};
 	}
 
 	@Override
@@ -91,14 +75,14 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	}
 
 	@Override
-	public int getChassiSize() {
+	public int getChassisSize() {
 		return 27;
 	}
 
 	@SuppressWarnings("deprecation")
 	@Override
 	public void InventoryChanged(IInventory inventory) {
-		ChassiModule _module = (ChassiModule) getLogisticsModule();
+		ChassisModule _module = (ChassisModule) getLogisticsModule();
 		boolean reInitGui = false;
 		for (int i = 0; i < inventory.getSizeInventory(); i++) {
 			ItemStack stack = inventory.getStackInSlot(i);
@@ -126,7 +110,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		}
 		if (reInitGui) {
 			if (MainProxy.isClient(getWorld())) {
-				if (FMLClientHandler.instance().getClient().currentScreen instanceof GuiChassiPipe) {
+				if (FMLClientHandler.instance().getClient().currentScreen instanceof GuiChassisPipe) {
 					FMLClientHandler.instance().getClient().currentScreen.initGui();
 				}
 			}
@@ -194,7 +178,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 		if (entityplayer.isSneaking() && SimpleServiceLocator.configToolHandler.canWrench(entityplayer, entityplayer.getItemStackFromSlot(EntityEquipmentSlot.MAINHAND), container)) {
 			if (MainProxy.isServer(getWorld())) {
 				if (settings == null || settings.openGui) {
-					((PipeLogisticsChassi) container.pipe).nextOrientation();
+					((PipeLogisticsChassis) container.pipe).nextOrientation();
 				} else {
 					entityplayer.sendMessage(new TextComponentTranslation("lp.chat.permissiondenied"));
 				}
@@ -236,7 +220,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	}
 
 	public boolean isUpgradeModule(ItemStack itemStack, int slot){
-		return ChassiGuiProvider.checkStack(itemStack, this, slot);
+		return ChassisGuiProvider.checkStack(itemStack, this, slot);
 	}
 
 	public void openGui(EntityPlayer entityPlayer) {
@@ -294,7 +278,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 	}
 	@Override
 	public void collectSpecificInterests(Collection<ItemIdentifier> itemidCollection) {
-		for (int i = 0; i < getChassiSize(); i++) {
+		for (int i = 0; i < getChassisSize(); i++) {
 			LogisticsModule module = getSubModule(i);
 			if (module != null) {
 				module.collectSpecificInterests(itemidCollection);
@@ -304,7 +288,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 
 	@Override
 	public boolean hasGenericInterests() {
-		for (int i = 0; i < getChassiSize(); i++) {
+		for (int i = 0; i < getChassisSize(); i++) {
 			LogisticsModule x = getSubModule(i);
 
 			if (x != null && x.hasGenericInterests()) {
@@ -405,7 +389,8 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 			IRouter defSat = getSatelliteRouterByID(getSatelliteUUID());
 			if(defSat == null)return false;
 			if(!(defSat.getPipe() instanceof PipeItemsSatelliteLogistics))return false;
-			IInventoryUtil inv = ((PipeItemsSatelliteLogistics) defSat.getPipe()).getPointedInventory();
+
+			IInventoryUtil inv = defSat.getPipe().getAvailableAdjacent().inventories().stream().map(LPNeighborTileEntityKt::getInventoryUtil).findFirst().orElse(null);
 			if (inv != null) {
 				for (int i = 0; i < inv.getSizeInventory(); i++) {
 					ItemStack stackInSlot = inv.getStackInSlot(i);
@@ -458,9 +443,9 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 					spawnParticle(Particles.RedParticle, 1);
 					return;
 				}
-				final NeighborTileEntity<TileEntity> pointedItemHandler = getPointedItemHandler();
-				if(canUseEnergy(neededEnergy()) && pointedItemHandler != null && pointedItemHandler.isItemHandler()){
-					IInventoryUtil util = pointedItemHandler.getInventoryUtil();
+
+				if(canUseEnergy(neededEnergy()) && !getAvailableAdjacent().inventories().isEmpty()){
+					IInventoryUtil util = getAvailableAdjacent().inventories().stream().map(LPNeighborTileEntityKt::getInventoryUtil).findFirst().orElse(null);
 					for (List<Pair<IRequestItems, ItemIdentifierStack>> map : buffered) {
 						if(map.stream().map(Pair::getValue).allMatch(i -> util.itemCount(i.getItem()) >= i.getStackSize())){
 							int maxDist = 0;
@@ -468,7 +453,7 @@ public class CraftingManager extends PipeLogisticsChassi implements IIdPipe {
 								ItemIdentifierStack toSend = en.getValue();
 								ItemStack removed = util.getMultipleItems(toSend.getItem(), toSend.getStackSize());
 								if (removed != null && !removed.isEmpty()) {
-									sendStack(removed, en.getKey().getID(), ItemSendMode.Fast, null);
+									sendStack(removed, en.getKey().getID(), ItemSendMode.Fast, null, getPointedOrientation());
 									maxDist = Math.max(maxDist, (int) en.getKey().getRouter().getPipe().getPos().distanceSq(getPos()));
 								}
 							}
