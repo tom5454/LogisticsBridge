@@ -2,6 +2,7 @@ package com.tom.logisticsbridge.gui;
 
 import java.io.IOException;
 
+import network.rs485.logisticspipes.util.TextUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
@@ -25,7 +26,6 @@ import com.tom.logisticsbridge.tileentity.ICraftingManager;
 import logisticspipes.utils.gui.LogisticsBaseGuiScreen;
 import logisticspipes.utils.gui.SmallGuiButton;
 import logisticspipes.utils.gui.extention.GuiExtention;
-import logisticspipes.utils.string.StringUtils;
 
 public class GuiCraftingManagerU extends LogisticsBaseGuiScreen {
 	private static final ResourceLocation BG = new ResourceLocation(LogisticsBridge.ID, "textures/gui/crafting_manager.png");
@@ -61,14 +61,14 @@ public class GuiCraftingManagerU extends LogisticsBaseGuiScreen {
 	public void initGui() {
 		super.initGui();//120 155
 		extentionControllerLeft.clear();
-		ConfigExtention ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.satellite"), pipe.satelliteDisplayStack(), 0);
-		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 45, guiTop + 25, 40, 10, StringUtils.translate("gui.crafting.Select")))));
+		ConfigExtention ce = new ConfigExtention(TextUtil.translate("gui.craftingManager.satellite"), pipe.satelliteDisplayStack(), 0);
+		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(0, guiLeft - 45, guiTop + 25, 40, 10, TextUtil.translate("gui.crafting.Select")))));
 		extentionControllerLeft.addExtention(ce);
-		ce = new ConfigExtention(StringUtils.translate("gui.craftingManager.blocking"), new ItemStack(Blocks.BARRIER), 2) {
+		ce = new ConfigExtention(TextUtil.translate("gui.craftingManager.blocking"), new ItemStack(Blocks.BARRIER), 2) {
 
 			@Override
 			public String getString() {
-				return StringUtils.translate("gui.craftingManager.blocking." + pipe.getBlockingMode().name().toLowerCase());
+				return TextUtil.translate("gui.craftingManager.blocking." + pipe.getBlockingMode().name().toLowerCase());
 			}
 
 			@Override
@@ -81,7 +81,7 @@ public class GuiCraftingManagerU extends LogisticsBaseGuiScreen {
 				return 140;
 			}
 		};
-		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(1, guiLeft - 45, guiTop + 11, 40, 10, StringUtils.translate("gui.craftingManager.blocking.change")))));
+		ce.registerButton(extentionControllerLeft.registerControlledButton(addButton(new SmallGuiButton(1, guiLeft - 45, guiTop + 11, 40, 10, TextUtil.translate("gui.craftingManager.blocking.change")))));
 		extentionControllerLeft.addExtention(ce);
 	}
 	@Override
@@ -143,7 +143,7 @@ public class GuiCraftingManagerU extends LogisticsBaseGuiScreen {
 			} else {
 				mc.fontRenderer.drawString(name, left + 9, top + 8, 0x404040);
 				if (pid == null || pid.isEmpty()) {
-					mc.fontRenderer.drawString(StringUtils.translate("gui.craftingManager.noConnection"), left + 40, top + 22, 0x404040);
+					mc.fontRenderer.drawString(TextUtil.translate("gui.craftingManager.noConnection"), left + 40, top + 22, 0x404040);
 				} else {
 					mc.fontRenderer.drawString("" + pid, left + textOff() - mc.fontRenderer.getStringWidth("" + pid)/2, top + 22, 0x404040);
 				}

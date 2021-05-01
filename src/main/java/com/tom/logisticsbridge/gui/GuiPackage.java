@@ -21,7 +21,7 @@ import com.tom.logisticsbridge.network.SetIDPacket;
 import logisticspipes.network.PacketHandler;
 import logisticspipes.network.abstractpackets.ModernPacket;
 import logisticspipes.proxy.MainProxy;
-import logisticspipes.utils.string.StringUtils;
+import network.rs485.logisticspipes.util.TextUtil;
 
 public class GuiPackage extends GuiContainer implements Runnable {
 	private static final ResourceLocation BG = new ResourceLocation(LogisticsBridge.ID, "textures/gui/package_gui.png");
@@ -50,7 +50,7 @@ public class GuiPackage extends GuiContainer implements Runnable {
 		this.fontRenderer.drawString(this.player.inventory.getDisplayName().getUnformattedText(), 8, this.ySize - 96 + 2, 4210752);
 		String pid = ((ContainerPackage)inventorySlots).id;
 		if (pid == null || pid.isEmpty()) {
-			mc.fontRenderer.drawString(StringUtils.translate("gui.craftingManager.noConnection"), 80, 14, 0x404040);
+			mc.fontRenderer.drawString(TextUtil.translate("gui.craftingManager.noConnection"), 80, 14, 0x404040);
 		} else {
 			mc.fontRenderer.drawString(pid, 105 - mc.fontRenderer.getStringWidth(pid)/2, 14, 0x404040);
 		}
@@ -59,7 +59,7 @@ public class GuiPackage extends GuiContainer implements Runnable {
 	@Override
 	public void initGui() {
 		super.initGui();
-		addButton(new GuiButton(0, guiLeft + 134, guiTop + 25, 30, 20, StringUtils.translate("gui.popup.addchannel.save")));
+		addButton(new GuiButton(0, guiLeft + 134, guiTop + 25, 30, 20, TextUtil.translate("gui.popup.addchannel.save")));
 		textField = new GuiTextField(1, fontRenderer, guiLeft + 80, guiTop + 25, 50, 20);
 	}
 	//this.mc.playerController.sendEnchantPacket(this.container.windowId, k);

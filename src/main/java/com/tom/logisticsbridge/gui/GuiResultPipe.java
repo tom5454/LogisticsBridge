@@ -14,6 +14,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.Container;
 import net.minecraft.tileentity.TileEntity;
 import network.rs485.logisticspipes.SatellitePipe;
+import network.rs485.logisticspipes.util.TextUtil;
 import org.lwjgl.input.Keyboard;
 
 import javax.annotation.Nonnull;
@@ -71,11 +72,11 @@ public class GuiResultPipe extends LogisticsBaseGuiScreen {
 	@Override
 	protected void drawGuiContainerForegroundLayer(int par1, int par2) {
 		super.drawGuiContainerForegroundLayer(par1, par2);
-		drawCenteredString(StringUtils.translate("gui.resultPipe.id"), 59, 7, 0x404040);
-		String name = StringUtils.getCuttedString(resultPipe.getSatellitePipeName(), 100, mc.fontRenderer);
+		drawCenteredString(TextUtil.translate("gui.resultPipe.id"), 59, 7, 0x404040);
+		String name = TextUtil.getTrimmedString(resultPipe.getSatellitePipeName(), 100, mc.fontRenderer, "...");
 		int yOffset = 0;
 		if (!response.isEmpty()) {
-			drawCenteredString(StringUtils.translate("gui.resultPipe.naming_result." + response), xSize / 2, 30, response.equals("success") ? 0x404040 : 0x5c1111);
+			drawCenteredString(TextUtil.translate("gui.resultPipe.naming_result." + response), xSize / 2, 30, response.equals("success") ? 0x404040 : 0x5c1111);
 			yOffset = 4;
 		}
 		drawCenteredString(name, xSize / 2, 24 - yOffset, 0x404040);
