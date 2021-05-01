@@ -66,15 +66,7 @@ repositories {
     }
     maven {
         name = "forge"
-        url = "https://files.minecraftforge.net/maven"
-    }
-    maven {
-        name = "refinedstorage"
-        url = "https://repo.refinedmods.com/"
-    }
-    maven {
-        name = "RS485 Cache"
-        url = "https://www.rs485.network/maven-cache/"
+        url = "https://maven.removeco.de/"
     }
 }
 
