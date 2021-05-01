@@ -48,12 +48,11 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import network.rs485.logisticspipes.connection.LPNeighborTileEntityKt;
 import org.apache.commons.lang3.tuple.Pair;
 
-import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class CraftingManager extends PipeLogisticsChassis implements IIdPipe {
-	private List<List<Pair<IRequestItems, ItemIdentifierStack>>> buffered = new ArrayList<>();
+	private List<List<Pair<UUID, ItemIdentifierStack>>> buffered = new ArrayList<>();
 	public static TextureType TEXTURE = Textures.empty;
 	public String satelliteId, resultId;
 	private UUID satelliteUUID, resultUUID;
@@ -366,7 +365,7 @@ public class CraftingManager extends PipeLogisticsChassis implements IIdPipe {
 		return false;
 	}
 
-	public void addBuffered(List<Pair<IRequestItems, ItemIdentifierStack>> rec) {
+	public void addBuffered(List<Pair<UUID, ItemIdentifierStack>> rec) {
 		buffered.add(rec);
 	}
 
@@ -374,12 +373,6 @@ public class CraftingManager extends PipeLogisticsChassis implements IIdPipe {
 		if(id == null)return null;
 		int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(id);
 		return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
-	}
-
-	public IRouter getResultRouterByID(UUID id) {
-		if(id == null)return null;
-		int resultRouterId = SimpleServiceLocator.routerManager.getIDforUUID(id);
-		return SimpleServiceLocator.routerManager.getRouter(resultRouterId);
 	}
 
 	private boolean checkBlocking() {
@@ -446,15 +439,15 @@ public class CraftingManager extends PipeLogisticsChassis implements IIdPipe {
 
 				if(canUseEnergy(neededEnergy()) && !getAvailableAdjacent().inventories().isEmpty()){
 					IInventoryUtil util = getAvailableAdjacent().inventories().stream().map(LPNeighborTileEntityKt::getInventoryUtil).findFirst().orElse(null);
-					for (List<Pair<IRequestItems, ItemIdentifierStack>> map : buffered) {
+					for (List<Pair<UUID, ItemIdentifierStack>> map : buffered) {
 						if(map.stream().map(Pair::getValue).allMatch(i -> util.itemCount(i.getItem()) >= i.getStackSize())){
 							int maxDist = 0;
-							for (Pair<IRequestItems, ItemIdentifierStack> en : map) {
+							for (Pair<UUID, ItemIdentifierStack> en : map) {
 								ItemIdentifierStack toSend = en.getValue();
 								ItemStack removed = util.getMultipleItems(toSend.getItem(), toSend.getStackSize());
 								if (removed != null && !removed.isEmpty()) {
-									sendStack(removed, en.getKey().getID(), ItemSendMode.Fast, null, getPointedOrientation());
-									maxDist = Math.max(maxDist, (int) en.getKey().getRouter().getPipe().getPos().distanceSq(getPos()));
+									sendStack(removed, SimpleServiceLocator.routerManager.getIDforUUID(en.getKey()), ItemSendMode.Fast, null, getPointedOrientation());
+									maxDist = Math.max(maxDist, (int) SimpleServiceLocator.routerManager.getRouter(SimpleServiceLocator.routerManager.getIDforUUID(en.getKey())).getPipe().getPos().distanceSq(getPos()));
 								}
 							}
 							useEnergy(neededEnergy(), true);

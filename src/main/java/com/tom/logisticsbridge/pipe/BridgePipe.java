@@ -80,6 +80,8 @@ import logisticspipes.utils.item.ItemIdentifierStack;
 import network.rs485.logisticspipes.connection.NeighborTileEntity;
 import network.rs485.logisticspipes.world.WorldCoordinatesWrapper;
 
+import javax.annotation.Nonnull;
+
 public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IRequestItems, IChangeListener, ICraftItems, IRequireReliableTransport {
 	public static TextureType TEXTURE = Textures.empty;
 	private BPModule itemSinkModule;
@@ -727,6 +729,13 @@ public class BridgePipe extends CoreRoutedPipe implements IProvideItems, IReques
 	public class BPModule extends LogisticsModule {
 		private SinkReply _sinkReply;
 		private SinkReply _sinkReplyDefault;
+
+
+		@Nonnull
+		@Override
+		public String getLPName() {
+			return "bridge";
+		}
 
 		@Override
 		public void registerPosition(ModulePositionType slot, int positionInt) {

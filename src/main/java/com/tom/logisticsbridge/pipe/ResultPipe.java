@@ -67,6 +67,8 @@ import network.rs485.logisticspipes.connection.Adjacent;
 import network.rs485.logisticspipes.connection.LPNeighborTileEntityKt;
 import network.rs485.logisticspipes.connection.NeighborTileEntity;
 import network.rs485.logisticspipes.connection.SingleAdjacent;
+import network.rs485.logisticspipes.inventory.IItemIdentifierInventory;
+import network.rs485.logisticspipes.property.InventoryProperty;
 
 import javax.annotation.Nonnull;
 
@@ -77,7 +79,6 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 	public static final Set<ResultPipe> AllResults = Collections.newSetFromMap(new WeakHashMap<>());
 
 	private String resultPipeName = "";
-	private boolean cachedAreAllOrderesToBuffer;
 	private WeakReference<TileEntity> lastAccessedCrafter = new WeakReference<>(null);
 
 	public ResultPipe(Item item) {
@@ -210,8 +211,6 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 					getItemOrderManager().setMachineProgress((byte) 0);
 				}
 			}
-		} else {
-			cachedAreAllOrderesToBuffer = false;
 		}
 
 		if (!isNthTick(6)) {
@@ -340,7 +339,6 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 				break;
 			}
 		}
-		cachedAreAllOrderesToBuffer = result;
 	}
 	protected int neededEnergy() {
 		return (int) (10 * Math.pow(1.1, getUpgradeManager().getItemExtractionUpgrade()) * Math.pow(1.2, getUpgradeManager().getItemStackExtractionUpgrade()))	;
@@ -367,7 +365,6 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 
 	@Nonnull
 	private ItemStack extractFromInventory(@Nonnull IInventoryUtil invUtil, IResource wanteditem, int count) {
-
 		ItemIdentifier itemToExtract = null;
 		if (wanteditem instanceof ItemResource) {
 			itemToExtract = ((ItemResource) wanteditem).getItem();
@@ -398,7 +395,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 	}
 
 	@Nonnull
-	private ItemStack extractFromInventoryFiltered(@Nonnull IInventoryUtil invUtil, ItemIdentifierInventory filter, boolean isExcluded, int filterInvLimit) {
+	private ItemStack extractFromInventoryFiltered(@Nonnull IInventoryUtil invUtil, IItemIdentifierInventory filter, boolean isExcluded, int filterInvLimit) {
 		ItemIdentifier wanteditem = null;
 		boolean found = false;
 		for (ItemIdentifier item : invUtil.getItemsAndCount().keySet()) {
@@ -420,7 +417,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 		return extracted;
 	}
 
-	private boolean isFiltered(ItemIdentifierInventory filter, int filterInvLimit, ItemIdentifier item, boolean found) {
+	private boolean isFiltered(IItemIdentifierInventory filter, int filterInvLimit, ItemIdentifier item, boolean found) {
 		for (int i = 0; i < filter.getSizeInventory() && i < filterInvLimit; i++) {
 			ItemIdentifierStack identStack = filter.getIDStackInSlot(i);
 			if (identStack == null) {
@@ -453,18 +450,19 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 		return resultPipeName;
 	}
 
-	public void extractCleanup(ItemIdentifierInventory _cleanupInventory, boolean cleanupModeIsExclude, int i) {
+	public void extractCleanup(InventoryProperty cleanupInventory, boolean cleanupModeIsExclude, int i) {
 		final List<NeighborTileEntity<TileEntity>> adjacentInventories = getAvailableAdjacent().inventories();
 
 		if (!getItemOrderManager().hasOrders(ResourceType.CRAFTING, ResourceType.EXTRA)) {
 			final ISlotUpgradeManager upgradeManager = Objects.requireNonNull(getUpgradeManager());
 			if (upgradeManager.getCrafterCleanup() > 0) {
 				adjacentInventories.stream()
-						.map(neighbor -> extractFiltered(neighbor, _cleanupInventory, cleanupModeIsExclude, upgradeManager.getCrafterCleanup() * 3))
-						.filter(stack -> !stack.isEmpty())
-						.findFirst()
+						.map(neighbor -> extractFiltered(neighbor, cleanupInventory, cleanupModeIsExclude,
+								upgradeManager.getCrafterCleanup() * 3)).filter(stack -> !stack.isEmpty()).findFirst()
 						.ifPresent(extracted -> {
-							queueRoutedItem(SimpleServiceLocator.routedItemHelper.createNewTravelItem(extracted), EnumFacing.UP);
+							queueRoutedItem(
+									SimpleServiceLocator.routedItemHelper.createNewTravelItem(extracted),
+									EnumFacing.UP);
 							getCacheHolder().trigger(CacheTypes.Inventory);
 						});
 			}
@@ -473,7 +471,7 @@ public class ResultPipe extends CoreRoutedPipe implements IIdPipe, IProvideItems
 	}
 
 	@Nonnull
-	private ItemStack extractFiltered(NeighborTileEntity<TileEntity> neighbor, ItemIdentifierInventory inv, boolean isExcluded, int filterInvLimit) {
+	private ItemStack extractFiltered(NeighborTileEntity<TileEntity> neighbor, IItemIdentifierInventory inv, boolean isExcluded, int filterInvLimit) {
 		final IInventoryUtil invUtil = LPNeighborTileEntityKt.getInventoryUtil(neighbor);
 		if (invUtil == null) return ItemStack.EMPTY;
 		return extractFromInventoryFiltered(invUtil, inv, isExcluded, filterInvLimit);

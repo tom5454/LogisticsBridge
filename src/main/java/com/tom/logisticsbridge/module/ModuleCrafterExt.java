@@ -51,21 +51,19 @@ public class ModuleCrafterExt extends ModuleCrafter {
 			return null;
 		}
 		IReqCraftingTemplate template = null;
-		if(this.getUpgradeManager().isFuzzyUpgrade() && outputFuzzyFlags.getBitSet().nextSetBit(0) != -1) {
-			if(toCraft instanceof DictResource) {
-				for (ItemIdentifierStack craftable : stack) {
-					DictResource dict = new DictResource(craftable, null);
-					dict.loadFromBitSet(outputFuzzyFlags.getBitSet());
-					if (toCraft.matches(craftable.getItem(), IResource.MatchSettings.NORMAL) && dict.matches(((DictResource) toCraft).getItem(), IResource.MatchSettings.NORMAL) && dict.getBitSet().equals(((DictResource) toCraft).getBitSet())) {
-						template = new DictCraftingTemplate(dict, this, priority);
-						break;
-					}
+		if (getUpgradeManager().isFuzzyUpgrade() && outputFuzzy().nextSetBit(0) != -1) {
+			for (ItemIdentifierStack craftable : stack) {
+				DictResource dict = new DictResource(craftable, null);
+				dict.loadFromBitSet(outputFuzzy().copyValue());
+				if (toCraft.matches(dict, IResource.MatchSettings.NORMAL)) {
+					template = new DictCraftingTemplate(dict, this, priority.getValue());
+					break;
 				}
 			}
 		} else {
 			for (ItemIdentifierStack craftable : stack) {
 				if (toCraft.matches(craftable.getItem(), IResource.MatchSettings.NORMAL)) {
-					template = new ItemCraftingTemplate(craftable, this, priority);
+					template = new ItemCraftingTemplate(craftable, this, priority.getValue());
 					break;
 				}
 			}
@@ -89,8 +87,8 @@ public class ModuleCrafterExt extends ModuleCrafter {
 				target[i] = defSat.getPipe();
 			}
 
-			boolean hasSatellite = isSatelliteConnected();
-			if (!hasSatellite) {
+
+			if (!isSatelliteConnected()) {
 				return null;
 			}
 			if (!getUpgradeManager().isAdvancedSatelliteCrafter()) {
@@ -113,19 +111,19 @@ public class ModuleCrafterExt extends ModuleCrafter {
 
 		//Check all materials
 		for (int i = 0; i < 9; i++) {
-			ItemIdentifierStack resourceStack = getMaterials(i);
+			ItemIdentifierStack resourceStack = dummyInventory.getIDStackInSlot(i);
 			if (resourceStack == null || resourceStack.getStackSize() == 0) {
 				continue;
 			}
-			IResource req = null;
-			if (getUpgradeManager().isFuzzyUpgrade() && fuzzyCraftingFlagArray[i].getBitSet().nextSetBit(0) != -1) {
+			IResource req;
+			if (getUpgradeManager().isFuzzyUpgrade() && inputFuzzy(i).nextSetBit(0) != -1) {
 				DictResource dict;
 				req = dict = new DictResource(resourceStack, target[i]);
-				dict.loadFromBitSet(fuzzyCraftingFlagArray[i].getBitSet());
+				dict.loadFromBitSet(inputFuzzy(i).copyValue());
 			} else {
 				req = new ItemResource(resourceStack, target[i]);
 			}
-			template.addRequirement(req, new BufferInformation(i, getPositionInt()));
+			template.addRequirement(req, new CraftingChassisInformation(i, getPositionInt()));
 		}
 
 		int liquidCrafter = getUpgradeManager().getFluidCrafter();
@@ -150,7 +148,7 @@ public class ModuleCrafterExt extends ModuleCrafter {
 
 		for (int i = 0; i < liquidCrafter; i++) {
 			FluidIdentifier liquid = getFluidMaterial(i);
-			int amount = getFluidAmount()[i];
+			int amount = liquidAmounts.get(i);
 			if (liquid == null || amount <= 0 || liquidTarget[i] == null) {
 				continue;
 			}
@@ -165,22 +163,14 @@ public class ModuleCrafterExt extends ModuleCrafter {
 	}
 
 	private IRouter getSatelliteRouter(int x) {
-		if (x == -1) {
-			int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(satelliteUUID);
-			return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
-		} else {
-			int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(advancedSatelliteUUIDArray[x]);
-			return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
-		}
+		final UUID satelliteUUID = x == -1 ? this.satelliteUUID.getValue() : advancedSatelliteUUIDList.get(x);
+		final int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(satelliteUUID);
+		return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
 	}
 	private IRouter getFluidSatelliteRouter(int x) {
-		if (x == -1) {
-			int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(liquidSatelliteUUID);
-			return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
-		} else {
-			int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(liquidSatelliteUUIDArray[x]);
-			return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
-		}
+		final UUID liquidSatelliteUUID = x == -1 ? this.liquidSatelliteUUID.getValue() : liquidSatelliteUUIDList.get(x);
+		final int satelliteRouterId = SimpleServiceLocator.routerManager.getIDforUUID(liquidSatelliteUUID);
+		return SimpleServiceLocator.routerManager.getRouter(satelliteRouterId);
 	}
 
 	public IRouter getSatelliteRouterByID(UUID id) {
@@ -225,16 +215,20 @@ public class ModuleCrafterExt extends ModuleCrafter {
 				}
 			}
 		}
-		remaining -= root.getAllPromissesFor(res, getCraftedItem().getItem());
+		final ItemIdentifierStack craftedItem = getCraftedItem();
+		if (craftedItem == null) return;
+		remaining -= root.getAllPromissesFor(this, craftedItem.getItem());
 		if (remaining < 1) {
 			return;
 		}
-		if(this.getUpgradeManager().isFuzzyUpgrade() && outputFuzzyFlags.getBitSet().nextSetBit(0) != -1) {
-			DictResource dict = new DictResource(getCraftedItem(), null).loadFromBitSet(outputFuzzyFlags.getBitSet());
-			LogisticsExtraDictPromise promise = new LogisticsExtraDictPromise(dict, Math.min(remaining, tree.getMissingAmount()), res, true);
+		if (getUpgradeManager().isFuzzyUpgrade() && outputFuzzy().nextSetBit(0) != -1) {
+			DictResource dict = new DictResource(craftedItem, null).loadFromBitSet(outputFuzzy().copyValue());
+			LogisticsExtraDictPromise promise = new LogisticsExtraDictPromise(dict,
+					Math.min(remaining, tree.getMissingAmount()), this, true);
 			tree.addPromise(promise);
 		} else {
-			LogisticsExtraPromise promise = new LogisticsExtraPromise(getCraftedItem().getItem(), Math.min(remaining, tree.getMissingAmount()), res, true);
+			LogisticsExtraPromise promise = new LogisticsExtraPromise(craftedItem.getItem(),
+					Math.min(remaining, tree.getMissingAmount()), this, true);
 			tree.addPromise(promise);
 		}
 		tree.setQueried(_service.getItemOrderManager());
@@ -248,12 +242,12 @@ public class ModuleCrafterExt extends ModuleCrafter {
 		if(result == null)return null;
 		int multiply = (int) Math.ceil(promise.numberOfItems / (float) result.getStackSize());
 		if(mngr.isBuffered()){
-			List<Pair<IRequestItems, ItemIdentifierStack>> rec = new ArrayList<>();
-			IRouter defSat = getSatelliteRouterByID(mngr.getSatelliteUUID());
+			List<Pair<UUID, ItemIdentifierStack>> rec = new ArrayList<>();
+			UUID defSat = mngr.getSatelliteUUID();
 			if(defSat == null)return null;
-			IRequestItems[] target = new IRequestItems[9];
+			UUID[] target = new UUID[9];
 			for (int i = 0; i < 9; i++) {
-				target[i] = defSat.getPipe();
+				target[i] = defSat;
 			}
 
 			boolean hasSatellite = isSatelliteConnected();
@@ -261,24 +255,17 @@ public class ModuleCrafterExt extends ModuleCrafter {
 				return null;
 			}
 			if (!getUpgradeManager().isAdvancedSatelliteCrafter()) {
-				IRouter r = getSatelliteRouter(-1);
-				if (r != null) {
-					IRequestItems sat = r.getPipe();
-					for (int i = 6; i < 9; i++) {
-						target[i] = sat;
-					}
+				for (int i = 6; i < 9; i++) {
+					target[i] = satelliteUUID.getValue();
 				}
 			} else {
 				for (int i = 0; i < 9; i++) {
-					IRouter r = getSatelliteRouter(i);
-					if (r != null) {
-						target[i] = r.getPipe();
-					}
+					target[i] = advancedSatelliteUUIDList.get(i);
 				}
 			}
 
 			for (int i = 0; i < target.length; i++) {
-				ItemIdentifierStack mat = getMaterials(i);
+				ItemIdentifierStack mat = dummyInventory.getIDStackInSlot(i);
 				if(mat != null)rec.add(Pair.of(target[i], mat));
 			}
 
@@ -324,7 +311,7 @@ public class ModuleCrafterExt extends ModuleCrafter {
 				CoreRoutedPipe coreRoutedPipe = resultR.getPipe();
 				if(!(coreRoutedPipe instanceof ResultPipe))return;
 				ResultPipe res = (ResultPipe) coreRoutedPipe;
-				res.extractCleanup(_cleanupInventory, cleanupModeIsExclude, getUpgradeManager().getCrafterCleanup() * 3);
+				res.extractCleanup(cleanupInventory, cleanupModeIsExclude.getValue(), getUpgradeManager().getCrafterCleanup() * 3);
 			}
 			return;
 		}
@@ -343,13 +330,5 @@ public class ModuleCrafterExt extends ModuleCrafter {
 				break;
 			}
 		}
-	}
-
-	public static class BufferInformation extends CraftingChassisInformation {
-
-		public BufferInformation(int craftingSlot, int moduleSlot) {
-			super(craftingSlot, moduleSlot);
-		}
-
 	}
 }
